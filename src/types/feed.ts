@@ -1,8 +1,13 @@
+export type FeedType = 'news' | 'events'
+
 export interface Feed {
   id: string
   name: string
   keywords: string[]
+  negativeKeywords: string[]
   freshness: 'qdr:d' | 'qdr:w' | 'qdr:m'
+  feedType: FeedType
+  naturalDescription?: string
   createdAt: number
 }
 
@@ -15,6 +20,19 @@ export interface FeedItem {
   source: string
   publishedAt?: string
 }
+
+export interface EventItem extends FeedItem {
+  itemType: 'event'
+  prizes?: string
+  deadline?: string
+  startDate?: string
+  endDate?: string
+  status: 'active' | 'upcoming' | 'ended'
+  registrationUrl?: string
+  organizer?: string
+}
+
+export type AnyFeedItem = FeedItem | EventItem
 
 export interface TranscriptMessage {
   role: 'user' | 'agent'

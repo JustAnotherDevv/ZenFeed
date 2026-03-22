@@ -1,9 +1,17 @@
 import { useCallback } from 'react'
 import { useFeedStore } from '@/store/useFeedStore'
-import { searchFeed } from '@/api/firecrawl'
+import { searchFeed, searchEvents } from '@/api/firecrawl'
 import { buildSearchQuery } from '@/lib/utils'
 import { REFRESH_INTERVAL_MS } from '@/lib/constants'
 import type { Feed } from '@/types/feed'
+
+async function fetchItemsForFeed(feed: Feed, limit?: number) {
+  const query = buildSearchQuery(feed.keywords, feed.negativeKeywords)
+  if (feed.feedType === 'events') {
+    return searchEvents(query, { limit, negativeKeywords: feed.negativeKeywords, naturalDescription: feed.naturalDescription })
+  }
+  return searchFeed(query, { freshness: feed.freshness, limit, negativeKeywords: feed.negativeKeywords })
+}
 
 export function useFeedSearch() {
   const fetchFeed = useCallback(async (feed: Feed, force = false) => {
@@ -16,8 +24,7 @@ export function useFeedSearch() {
     store.setLoadingState(feed.id, force ? 'refreshing' : 'loading')
 
     try {
-      const query = buildSearchQuery(feed.keywords)
-      const items = await searchFeed(query, { freshness: feed.freshness })
+      const items = await fetchItemsForFeed(feed)
       useFeedStore.getState().setItems(feed.id, items)
       useFeedStore.getState().setLastFetchedAt(feed.id, Date.now())
       useFeedStore.getState().setLoadingState(feed.id, 'idle')
@@ -29,7 +36,9 @@ export function useFeedSearch() {
 
   const appendSearch = useCallback(async (feed: Feed, query: string) => {
     try {
-      const items = await searchFeed(query, { freshness: feed.freshness, limit: 5 })
+      const items = feed.feedType === 'events'
+        ? await searchEvents(query, { limit: 5, negativeKeywords: feed.negativeKeywords })
+        : await searchFeed(query, { freshness: feed.freshness, limit: 5, negativeKeywords: feed.negativeKeywords })
       useFeedStore.getState().appendItems(feed.id, items)
     } catch (err) {
       console.error('Append search error:', err)

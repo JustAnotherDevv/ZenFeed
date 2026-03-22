@@ -31,6 +31,32 @@ export function generateId(): string {
   return Math.random().toString(36).slice(2, 11)
 }
 
-export function buildSearchQuery(keywords: string[]): string {
-  return keywords.join(' OR ')
+export function buildSearchQuery(keywords: string[], negativeKeywords?: string[]): string {
+  const positive = keywords.length > 1 ? `(${keywords.join(' OR ')})` : keywords[0] ?? ''
+  if (!negativeKeywords?.length) return positive
+  const negative = negativeKeywords.map(k => `-"${k}"`).join(' ')
+  return `${positive} ${negative}`
+}
+
+export function daysUntil(dateStr?: string): number | null {
+  if (!dateStr) return null
+  try {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return null
+    const diffMs = d.getTime() - Date.now()
+    return Math.ceil(diffMs / 86400000)
+  } catch {
+    return null
+  }
+}
+
+export function formatDeadline(dateStr?: string): string {
+  if (!dateStr) return ''
+  try {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return dateStr
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  } catch {
+    return dateStr
+  }
 }

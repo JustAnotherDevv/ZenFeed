@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { useFeedStore } from '@/store/useFeedStore'
 import { useVoiceAgent } from '@/hooks/useVoiceAgent'
+import { useFeedSearch } from '@/hooks/useFeedSearch'
 import { FeedTabBar } from './FeedTabBar'
 import { TopBar } from './TopBar'
 import { FeedView } from '@/components/feed/FeedView'
@@ -8,6 +9,7 @@ import { VoiceOrb } from '@/components/voice/VoiceOrb'
 import { VoiceTranscript } from '@/components/voice/VoiceTranscript'
 import { CreateFeedModal } from '@/components/modals/CreateFeedModal'
 import { FeedSettingsModal } from '@/components/modals/FeedSettingsModal'
+import { DebugPanel } from '@/components/debug/DebugPanel'
 
 export function AppShell() {
   const feeds = useFeedStore((s) => s.feeds)
@@ -19,6 +21,12 @@ export function AppShell() {
 
   const activeFeed = feeds[activeIndex] ?? null
   const { status, isSpeaking, toggleSession, endSession } = useVoiceAgent(activeFeed)
+  const { refresh } = useFeedSearch()
+  const isRefreshing = useFeedStore((s) => activeFeed ? s.loadingState[activeFeed.id] === 'refreshing' : false)
+
+  const handleRefresh = useCallback(() => {
+    if (activeFeed) refresh(activeFeed)
+  }, [activeFeed, refresh])
 
   const handleTabSelect = useCallback(
     (i: number) => {
@@ -42,6 +50,8 @@ export function AppShell() {
     <div className="flex flex-col h-svh bg-background">
       <TopBar
         onAddFeed={() => setCreateOpen(true)}
+        onRefresh={activeFeed ? handleRefresh : undefined}
+        isRefreshing={isRefreshing}
         onSettings={() => setSettingsOpen(true)}
       />
 
@@ -93,6 +103,7 @@ export function AppShell() {
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
       />
+      <DebugPanel />
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Feed, FeedItem, TranscriptMessage, AgentStatus, LoadingState } from '@/types/feed'
+import type { Feed, AnyFeedItem, TranscriptMessage, AgentStatus, LoadingState } from '@/types/feed'
 import { generateId } from '@/lib/utils'
 
 interface FeedStore {
@@ -10,7 +10,7 @@ interface FeedStore {
 
   // Ephemeral
   activeIndex: number
-  itemsCache: Record<string, FeedItem[]>
+  itemsCache: Record<string, AnyFeedItem[]>
   loadingState: Record<string, LoadingState>
   lastFetchedAt: Record<string, number>
   highlightedItem: Record<string, number | null>
@@ -22,8 +22,8 @@ interface FeedStore {
   updateFeed: (id: string, patch: Partial<Feed>) => void
   deleteFeed: (id: string) => void
   setActiveIndex: (i: number) => void
-  setItems: (feedId: string, items: FeedItem[]) => void
-  appendItems: (feedId: string, items: FeedItem[]) => void
+  setItems: (feedId: string, items: AnyFeedItem[]) => void
+  appendItems: (feedId: string, items: AnyFeedItem[]) => void
   addKeyword: (feedId: string, keyword: string) => void
   setLoadingState: (feedId: string, state: LoadingState) => void
   setLastFetchedAt: (feedId: string, ts: number) => void
@@ -40,7 +40,6 @@ export const useFeedStore = create<FeedStore>()(
       feeds: [],
       hasCompletedOnboarding: false,
 
-      // Ephemeral defaults
       activeIndex: 0,
       itemsCache: {},
       loadingState: {},
@@ -106,9 +105,7 @@ export const useFeedStore = create<FeedStore>()(
       setAgentStatus: (s) => set({ agentStatus: s }),
 
       appendTranscript: (msg) =>
-        set((s) => ({
-          transcript: [...s.transcript.slice(-49), msg],
-        })),
+        set((s) => ({ transcript: [...s.transcript.slice(-49), msg] })),
 
       clearTranscript: () => set({ transcript: [] }),
 
@@ -120,6 +117,15 @@ export const useFeedStore = create<FeedStore>()(
         feeds: state.feeds,
         hasCompletedOnboarding: state.hasCompletedOnboarding,
       }),
+      merge: (persisted, current) => {
+        const p = persisted as Partial<FeedStore>
+        // Migrate old feeds that lack negativeKeywords
+        const feeds = (p.feeds ?? []).map(f => ({
+          ...f,
+          negativeKeywords: f.negativeKeywords ?? [],
+        }))
+        return { ...current, ...p, feeds }
+      },
     }
   )
 )
