@@ -107,17 +107,24 @@ export async function searchFeed(
   return postFilter(results, opts.negativeKeywords ?? [])
 }
 
-async function scrapeMarkdown(url: string, apiKey: string): Promise<string | null> {
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+async function scrapeMarkdown(url: string, apiKey: string, attempt = 0): Promise<string | null> {
   try {
     const res = await fetch(`${BASE}/scrape`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        url,
-        formats: ['markdown'],
-        onlyMainContent: true,
-      }),
+      body: JSON.stringify({ url, formats: ['markdown'], onlyMainContent: true }),
     })
+
+    if (res.status === 429) {
+      if (attempt >= 3) return null
+      const retryAfter = parseInt(res.headers.get('retry-after') ?? '0', 10)
+      const delay = retryAfter > 0 ? retryAfter * 1000 : (attempt + 1) * 2000
+      await sleep(delay)
+      return scrapeMarkdown(url, apiKey, attempt + 1)
+    }
+
     if (!res.ok) return null
     const json = await res.json()
     return json.data?.markdown ?? null
@@ -140,31 +147,34 @@ async function analyzeWithAI(
   const negPrompt = opts.negativeKeywords.length
     ? `\nExclude if related to: ${opts.negativeKeywords.join(', ')}.`
     : ''
-  const intentPrompt = opts.naturalDescription
-    ? `\nThe user is looking for: "${opts.naturalDescription}"\nOnly classify as a relevant event if it matches this intent.`
-    : ''
+  const intentLine = opts.naturalDescription
+    ? `The user wants: "${opts.naturalDescription}"`
+    : 'The user wants: hackathons, competitions, or grant events'
 
-  const systemPrompt = `You are an event page classifier. Today is ${today}.${negPrompt}${intentPrompt}
+  const systemPrompt = `You are a strict event relevance classifier. Today is ${today}.
+${intentLine}${negPrompt}
 
-Analyze the page content and return JSON only (no markdown, no explanation outside the JSON).
+Return JSON only. No markdown, no text outside the JSON object.
 
-Classify the page as one of:
-A) SPECIFIC event/hackathon/competition/grant page → isEvent:true, isEventList:false
-B) LIST page with multiple events → isEvent:false, isEventList:true, extract eventLinks (up to 30 URLs)
-C) Job listing, article, unrelated → isEvent:false, isEventList:false
+STEP 1 — Relevance check:
+Does this page match what the user wants? If it is a poetry contest, writing contest, sports event, job listing, news article, or anything that does NOT match the user's stated intent → set isEvent:false immediately.
+isEvent must be TRUE only when: (1) the page is a specific event/hackathon/competition/grant AND (2) its topic directly matches the user's intent.
 
-For type A, extract: name, description (1-2 sentences), prizes (total prize pool as string), deadline (ISO date of submission deadline), startDate (ISO), endDate (ISO), registrationUrl, organizer.
+STEP 2 — List check:
+If this is a LIST or AGGREGATOR page with multiple events → set isEvent:false, isEventList:true, extract up to 30 individual event URLs into eventLinks.
 
-STATUS RULES — read all dates on the page carefully:
+STEP 3 — If isEvent is true, extract:
+name, description (1-2 sentences), prizes (total prize pool), deadline (ISO), startDate (ISO), endDate (ISO), registrationUrl, organizer.
+
+STATUS — check all dates carefully:
 - "ended": deadline < ${today}, OR endDate < ${today}, OR page says "submission period ended" / "results announced" / "winners" / "concluded" / "closed"
-- "upcoming": startDate > ${today} and submissions not open yet
+- "upcoming": event hasn't started yet (startDate > ${today})
 - "active": currently accepting submissions
+When uncertain → default to "ended".
 
-When uncertain about status, default to "ended" rather than "active".
+reasoning: 2-3 sentences — state what type of page it is, whether it matches the user's intent, what dates you found, and why you set the status.
 
-Include a "reasoning" field (1-3 sentences) explaining: what type of page this is, what dates you found, and why you set the status you did.
-
-Return valid JSON matching this shape:
+JSON shape:
 {"isEvent":bool,"isEventList":bool,"eventLinks":[],"name":"","description":"","prizes":"","deadline":"","startDate":"","endDate":"","status":"active|upcoming|ended","registrationUrl":"","organizer":"","reasoning":""}`
 
   const userMsg = `URL: ${url}\n\nPage content:\n${truncated}`
@@ -217,9 +227,12 @@ function makeEventItem(extracted: ExtractedEvent, meta: FirecrawlSearchResult | 
 async function processUrl(
   url: string,
   apiKey: string,
-  opts: { negativeKeywords: string[]; naturalDescription?: string; phase: 'scrape' | 'sublink' },
+  opts: { negativeKeywords: string[]; naturalDescription?: string; phase: 'scrape' | 'sublink'; processedUrls: Set<string> },
   meta?: FirecrawlSearchResult
 ): Promise<{ event?: EventItem; subLinks?: string[] }> {
+  // Skip if already processed (handles duplicates in sub-link lists)
+  if (opts.processedUrls.has(url)) return {}
+  opts.processedUrls.add(url)
   const debug = useDebugStore.getState()
 
   // Step 1: scrape markdown
@@ -275,6 +288,84 @@ async function processUrl(
   return { event: makeEventItem(extracted, meta, url) }
 }
 
+async function generateSearchQueries(
+  naturalDescription: string,
+  keywords: string[]
+): Promise<string[]> {
+  try {
+    const text = await callOpenRouter(
+      [
+        {
+          role: 'system',
+          content: `You generate Google search queries to find open hackathons and competitions.
+Return ONLY a JSON array of exactly 5 query strings. No explanation, no markdown.`,
+        },
+        {
+          role: 'user',
+          content: `User wants: "${naturalDescription}"
+Keywords: ${keywords.join(', ')}
+
+Generate 5 specific search queries to find CURRENTLY OPEN events matching this intent.
+Rules:
+- Be highly specific to the exact topic — do NOT generate generic "prize competition" queries
+- Include 2 queries with site: prefixes for platforms where these events are listed (choose from: devpost.com, dorahacks.io, ethglobal.com, gitcoin.co, buidlbox.io, hackerearth.com, replit.com/bounties based on topic)
+- Target registration/submission pages, not news articles
+- Each query should include "2026" and either "register" or "open" or "submit"
+- Keep queries short (4-8 words each)
+Return JSON array only: ["query1","query2","query3","query4","query5"]`,
+        },
+      ],
+      { maxTokens: 200 }
+    )
+    const match = text.match(/\[[\s\S]*\]/)
+    if (!match) return []
+    const parsed = JSON.parse(match[0])
+    return Array.isArray(parsed) ? parsed.filter((q): q is string => typeof q === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+async function runParallelSearches(
+  queries: string[],
+  apiKey: string,
+): Promise<FirecrawlSearchResult[]> {
+  const results = await Promise.all(
+    queries.map(async q => {
+      try {
+        const res = await fetch(`${BASE}/search`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({
+            query: q,
+            limit: 8,
+            tbs: 'qdr:m',
+            scrapeOptions: { formats: ['markdown'], onlyMainContent: true },
+          }),
+        })
+        if (!res.ok) return []
+        const json: FirecrawlResponse = await res.json()
+        return json.data?.filter(r => r.url) ?? []
+      } catch {
+        return []
+      }
+    })
+  )
+
+  // Merge and dedupe by URL, preserve order (first occurrence wins)
+  const seen = new Set<string>()
+  const merged: FirecrawlSearchResult[] = []
+  for (const batch of results) {
+    for (const r of batch) {
+      if (r.url && !seen.has(r.url)) {
+        seen.add(r.url)
+        merged.push(r)
+      }
+    }
+  }
+  return merged.slice(0, 25)
+}
+
 export async function searchEvents(
   query: string,
   opts: { limit?: number; negativeKeywords?: string[]; naturalDescription?: string } = {}
@@ -284,40 +375,42 @@ export async function searchEvents(
 
   const debug = useDebugStore.getState()
   debug.clear()
+  debug.setIntent(opts.naturalDescription ?? '')
 
   const negativeKeywords = opts.negativeKeywords ?? []
-  const negStr = negativeKeywords.map(k => `-"${k}"`).join(' ')
-  const enhancedQuery = `${query} 2026 deadline prize${negStr ? ' ' + negStr : ''}`
 
-  // Phase 1: search
-  const searchRes = await fetch(`${BASE}/search`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      query: enhancedQuery,
-      limit: opts.limit ?? SEARCH_LIMIT,
-      tbs: 'qdr:m',
-      scrapeOptions: { formats: ['markdown'], onlyMainContent: true },
-    }),
-  })
+  // Extract keywords from query for query generation
+  const keywords = query.replace(/[()]/g, '').split(/ OR |-"[^"]*"/).map(s => s.trim()).filter(Boolean)
 
-  if (!searchRes.ok) throw new Error(`Firecrawl search error: ${searchRes.status}`)
-  const searchJson: FirecrawlResponse = await searchRes.json()
-  if (!searchJson.success || !searchJson.data) throw new Error('Search failed')
+  // Phase 1: generate targeted queries + run them in parallel
+  const fallbackQuery = `${query} 2026 open register`
+  let queries: string[]
 
-  const searchResults = searchJson.data.filter(r => r.url)
+  if (opts.naturalDescription) {
+    queries = await generateSearchQueries(opts.naturalDescription, keywords)
+  }
+  if (!queries! || queries.length === 0) {
+    queries = [fallbackQuery]
+  }
+  debug.setQueries(queries)
+
+  const searchResults = await runParallelSearches(queries, apiKey)
+
   const metaMap = new Map<string, FirecrawlSearchResult>()
   for (const r of searchResults) {
     if (r.url) metaMap.set(r.url, r)
   }
 
-  const topUrls = searchResults.slice(0, 10).map(r => r.url!)
+  const topUrls = searchResults.map(r => r.url!)
 
-  // Phase 2: scrape + analyze in batches of 5
-  const processOpts = { negativeKeywords, naturalDescription: opts.naturalDescription, phase: 'scrape' as const }
+  // Shared set — prevents any URL from being scraped/analyzed more than once
+  const processedUrls = new Set<string>()
+
+  // Phase 2: scrape + analyze in batches of 3 to stay within rate limits
+  const processOpts = { negativeKeywords, naturalDescription: opts.naturalDescription, phase: 'scrape' as const, processedUrls }
   const phase2Results = await batchAll(
     topUrls.map(url => () => processUrl(url, apiKey, processOpts, metaMap.get(url))),
-    5
+    3
   )
 
   const events: EventItem[] = []
@@ -326,11 +419,12 @@ export async function searchEvents(
   for (const result of phase2Results) {
     if (result.event) events.push(result.event)
     if (result.subLinks?.length) {
-      const links = result.subLinks.slice(0, 15)
+      // Dedupe sub-links before queuing
+      const links = [...new Set(result.subLinks)].filter(u => !processedUrls.has(u)).slice(0, 15)
       subLinkJobs.push(async () => {
         const subResults = await batchAll(
           links.map(subUrl => () => processUrl(subUrl, apiKey, { ...processOpts, phase: 'sublink' })),
-          5
+          3
         )
         for (const sr of subResults) {
           if (sr.event) events.push(sr.event)
@@ -343,10 +437,20 @@ export async function searchEvents(
   for (const job of subLinkJobs) await job()
 
   // Dedupe by URL
-  const seen = new Set<string>()
-  const deduped = events.filter(e => {
-    if (seen.has(e.url)) return false
-    seen.add(e.url)
+  const seenUrl = new Set<string>()
+  const urlDeduped = events.filter(e => {
+    if (seenUrl.has(e.url)) return false
+    seenUrl.add(e.url)
+    return true
+  })
+
+  // Dedupe by event identity (same name + same deadline = same event covered by multiple sites)
+  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
+  const seenIdentity = new Set<string>()
+  const deduped = urlDeduped.filter(e => {
+    const key = `${normalize(e.title)}|${e.deadline ?? ''}`
+    if (seenIdentity.has(key)) return false
+    seenIdentity.add(key)
     return true
   })
 

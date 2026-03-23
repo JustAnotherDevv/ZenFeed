@@ -14,14 +14,20 @@ export interface DebugEntry {
 
 interface DebugStore {
   entries: DebugEntry[]
+  intent: string
+  queries: string[]
   isOpen: boolean
   log: (entry: Omit<DebugEntry, 'id' | 'ts'>) => void
   clear: () => void
   setOpen: (v: boolean) => void
+  setIntent: (intent: string) => void
+  setQueries: (queries: string[]) => void
 }
 
 export const useDebugStore = create<DebugStore>((set) => ({
   entries: [],
+  intent: '',
+  queries: [],
   isOpen: false,
   log: (entry) =>
     set((s) => ({
@@ -29,4 +35,6 @@ export const useDebugStore = create<DebugStore>((set) => ({
     })),
   clear: () => set({ entries: [] }),
   setOpen: (v) => set({ isOpen: v }),
+  setIntent: (intent) => set({ intent }),
+  setQueries: (queries) => set({ queries }),
 }))

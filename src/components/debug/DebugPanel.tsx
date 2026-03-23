@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, Trash2, ChevronDown, ChevronUp, CheckCircle2, XCircle, Clock, List } from 'lucide-react'
+import { X, Trash2, ChevronDown, ChevronUp, CheckCircle2, XCircle, Clock, List, Search } from 'lucide-react'
 import { useDebugStore, type DebugEntry } from '@/store/useDebugStore'
 
 function statusIcon(status: DebugEntry['status']) {
@@ -86,7 +86,10 @@ function EntryRow({ entry }: { entry: DebugEntry }) {
 
 export function DebugPanel() {
   const entries = useDebugStore((s) => s.entries)
+  const intent = useDebugStore((s) => s.intent)
+  const queries = useDebugStore((s) => s.queries)
   const isOpen = useDebugStore((s) => s.isOpen)
+  const [queriesExpanded, setQueriesExpanded] = useState(false)
   const { clear, setOpen } = useDebugStore()
 
   if (!isOpen) return null
@@ -100,9 +103,35 @@ export function DebugPanel() {
     <div className="fixed inset-y-0 right-0 w-80 max-w-[90vw] bg-background border-l border-border z-50 flex flex-col shadow-2xl">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-3 border-b border-border shrink-0">
-        <div>
+        <div className="flex-1 min-w-0 mr-2">
           <span className="font-semibold text-sm">Extraction Debug</span>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          {intent && (
+            <p className="text-xs text-primary/80 bg-primary/8 rounded-lg px-2 py-1 mt-1.5 leading-relaxed">
+              "{intent}"
+            </p>
+          )}
+          {queries.length > 0 && (
+            <div className="mt-1.5">
+              <button
+                onClick={() => setQueriesExpanded(!queriesExpanded)}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <Search className="w-3 h-3" />
+                {queries.length} search queries
+                {queriesExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </button>
+              {queriesExpanded && (
+                <div className="mt-1 space-y-1">
+                  {queries.map((q, i) => (
+                    <p key={i} className="text-[10px] font-mono text-muted-foreground bg-muted rounded px-2 py-1 truncate">
+                      {q}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground mt-1">
             {accepted > 0 && <span className="text-green-600">{accepted} accepted</span>}
             {accepted > 0 && discarded > 0 && <span className="text-muted-foreground"> · </span>}
             {discarded > 0 && <span className="text-red-500">{discarded} discarded</span>}
