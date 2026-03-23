@@ -3,6 +3,7 @@ import { generateId } from '@/lib/utils'
 import { SEARCH_LIMIT } from '@/lib/constants'
 import { callOpenRouter } from './openrouter'
 import { useDebugStore } from '@/store/useDebugStore'
+import { parsePrizeAmount } from '@/lib/utils'
 
 const BASE = 'https://api.firecrawl.dev/v1'
 
@@ -40,6 +41,7 @@ interface ExtractedEvent {
   status?: 'active' | 'upcoming' | 'ended'
   registrationUrl?: string
   organizer?: string
+  location?: string
   reasoning?: string
 }
 
@@ -164,7 +166,7 @@ STEP 2 — List check:
 If this is a LIST or AGGREGATOR page with multiple events → set isEvent:false, isEventList:true, extract up to 30 individual event URLs into eventLinks.
 
 STEP 3 — If isEvent is true, extract:
-name, description (1-2 sentences), prizes (total prize pool), deadline (ISO), startDate (ISO), endDate (ISO), registrationUrl, organizer.
+name, description (1-2 sentences), prizes (total prize pool as string e.g. "$50,000"), deadline (ISO), startDate (ISO), endDate (ISO), registrationUrl, organizer, location (city and country where event is held, or "online" if virtual, or "hybrid").
 
 STATUS — check all dates carefully:
 - "ended": deadline < ${today}, OR endDate < ${today}, OR page says "submission period ended" / "results announced" / "winners" / "concluded" / "closed"
@@ -175,7 +177,7 @@ When uncertain → default to "ended".
 reasoning: 2-3 sentences — state what type of page it is, whether it matches the user's intent, what dates you found, and why you set the status.
 
 JSON shape:
-{"isEvent":bool,"isEventList":bool,"eventLinks":[],"name":"","description":"","prizes":"","deadline":"","startDate":"","endDate":"","status":"active|upcoming|ended","registrationUrl":"","organizer":"","reasoning":""}`
+{"isEvent":bool,"isEventList":bool,"eventLinks":[],"name":"","description":"","prizes":"","deadline":"","startDate":"","endDate":"","status":"active|upcoming|ended","registrationUrl":"","organizer":"","location":"","reasoning":""}`
 
   const userMsg = `URL: ${url}\n\nPage content:\n${truncated}`
 
@@ -215,12 +217,14 @@ function makeEventItem(extracted: ExtractedEvent, meta: FirecrawlSearchResult | 
     title: extracted.name ?? base.title,
     summary: extracted.description ?? base.summary,
     prizes: extracted.prizes,
+    prizeAmount: parsePrizeAmount(extracted.prizes),
     deadline: extracted.deadline,
     startDate: extracted.startDate,
     endDate: extracted.endDate,
     status: extracted.status ?? 'active',
     registrationUrl: extracted.registrationUrl,
     organizer: extracted.organizer,
+    location: extracted.location,
   }
 }
 

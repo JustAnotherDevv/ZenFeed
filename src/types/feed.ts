@@ -24,12 +24,14 @@ export interface FeedItem {
 export interface EventItem extends FeedItem {
   itemType: 'event'
   prizes?: string
+  prizeAmount?: number   // parsed numeric value for sorting
   deadline?: string
   startDate?: string
   endDate?: string
   status: 'active' | 'upcoming' | 'ended'
   registrationUrl?: string
   organizer?: string
+  location?: string      // city/country or "online"
 }
 
 export type AnyFeedItem = FeedItem | EventItem

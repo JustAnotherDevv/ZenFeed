@@ -38,6 +38,17 @@ export function buildSearchQuery(keywords: string[], negativeKeywords?: string[]
   return `${positive} ${negative}`
 }
 
+export function parsePrizeAmount(prize?: string): number {
+  if (!prize) return 0
+  // Find the largest number in the string (handles "$50,000", "up to €20,000", "50k", etc.)
+  const matches = prize.replace(/,/g, '').match(/[\d.]+k?/gi) ?? []
+  const amounts = matches.map(m => {
+    const n = parseFloat(m)
+    return m.toLowerCase().endsWith('k') ? n * 1000 : n
+  })
+  return Math.max(0, ...amounts)
+}
+
 export function daysUntil(dateStr?: string): number | null {
   if (!dateStr) return null
   try {
