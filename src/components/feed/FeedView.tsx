@@ -98,7 +98,7 @@ export function FeedView({ feed }: FeedViewProps) {
         </div>
       )}
 
-      <div className="p-4 pb-32">
+      <div className="max-w-5xl mx-auto w-full p-4 pb-32">
         {isLoading ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => <FeedCardSkeleton key={i} />)}
@@ -128,7 +128,7 @@ export function FeedView({ feed }: FeedViewProps) {
 
             {/* Cards */}
             {view === 'grid' && isEvents ? (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
                 {sortedEvents.map((item, i) => (
                   <div key={item.id} ref={(el) => { cardRefs.current[i] = el }}>
                     <EventCard item={item} index={i} highlighted={highlightedItem === i} compact />

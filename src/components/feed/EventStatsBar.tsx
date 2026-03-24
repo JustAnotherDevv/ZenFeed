@@ -60,14 +60,14 @@ export function EventStatsBar({ items, intent }: EventStatsBarProps) {
   if (stats.length === 0) return null
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+    <div className="flex flex-wrap gap-2">
       {stats.map(stat => (
         <div
           key={stat.label}
-          className="shrink-0 bg-primary/8 rounded-xl px-3 py-2 min-w-0"
+          className="bg-primary/8 rounded-xl px-3 py-2"
         >
           <p className="text-[10px] text-muted-foreground leading-none mb-0.5">{stat.label}</p>
-          <p className="text-xs font-semibold text-foreground whitespace-nowrap">{stat.value}</p>
+          <p className="text-xs font-semibold text-foreground">{stat.value}</p>
         </div>
       ))}
     </div>
