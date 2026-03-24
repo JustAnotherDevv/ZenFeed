@@ -32,6 +32,9 @@ export interface EventItem extends FeedItem {
   registrationUrl?: string
   organizer?: string
   location?: string      // city/country or "online"
+  tags?: string[]        // track/theme labels: ["DeFi", "AI/ML", "GameFi"]
+  techStack?: string[]   // required tech: ["Solidity", "Python", "React"]
+  teamSize?: string      // e.g. "solo or teams up to 4"
 }
 
 export type AnyFeedItem = FeedItem | EventItem
@@ -43,4 +46,4 @@ export interface TranscriptMessage {
 }
 
 export type AgentStatus = 'idle' | 'connecting' | 'connected' | 'error'
-export type LoadingState = 'idle' | 'loading' | 'refreshing' | 'error'
+export type LoadingState = 'idle' | 'loading' | 'refreshing' | 'streaming' | 'error'

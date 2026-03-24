@@ -23,9 +23,11 @@ export function AppShell() {
   const { status, isSpeaking, toggleSession, endSession } =
     useVoiceAgent(activeFeed);
   const { refresh } = useFeedSearch();
-  const isRefreshing = useFeedStore((s) =>
-    activeFeed ? s.loadingState[activeFeed.id] === "refreshing" : false,
-  );
+  const isRefreshing = useFeedStore((s) => {
+    if (!activeFeed) return false
+    const state = s.loadingState[activeFeed.id]
+    return state === "refreshing" || state === "loading" || state === "streaming"
+  });
 
   const handleRefresh = useCallback(() => {
     if (activeFeed) refresh(activeFeed);

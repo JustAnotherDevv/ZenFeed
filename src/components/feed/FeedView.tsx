@@ -77,6 +77,7 @@ export function FeedView({ feed }: FeedViewProps) {
 
   const isLoading = loadingState === 'loading'
   const isRefreshing = loadingState === 'refreshing'
+  const isStreaming = loadingState === 'streaming'
   const isError = loadingState === 'error'
   const isEvents = feed.feedType === 'events'
 
@@ -89,17 +90,22 @@ export function FeedView({ feed }: FeedViewProps) {
 
   return (
     <div className="h-full overflow-y-auto" {...ptr}>
-      {isRefreshing && (
+      {(isRefreshing || isStreaming) && (
         <div className="flex items-center justify-center py-3 text-primary">
           <RefreshCw className="w-4 h-4 animate-spin mr-2" />
           <span className="text-xs font-medium">
-            {isEvents ? 'Extracting events…' : 'Refreshing…'}
+            {isStreaming
+              ? (isEvents
+                  ? `Finding events… ${items.length > 0 ? `${items.length} found` : ''}`
+                  : `Finding articles… ${items.length > 0 ? `${items.length} found` : ''}`)
+              : (isEvents ? 'Extracting events…' : 'Refreshing…')
+            }
           </span>
         </div>
       )}
 
       <div className="max-w-5xl mx-auto w-full p-4 pb-32">
-        {isLoading ? (
+        {(isLoading || isStreaming) && items.length === 0 ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => <FeedCardSkeleton key={i} />)}
           </div>

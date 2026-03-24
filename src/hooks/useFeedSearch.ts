@@ -3,14 +3,29 @@ import { useFeedStore } from '@/store/useFeedStore'
 import { searchFeed, searchEvents } from '@/api/firecrawl'
 import { buildSearchQuery } from '@/lib/utils'
 import { REFRESH_INTERVAL_MS } from '@/lib/constants'
-import type { Feed } from '@/types/feed'
+import type { Feed, AnyFeedItem } from '@/types/feed'
 
-async function fetchItemsForFeed(feed: Feed, limit?: number) {
+async function fetchItemsForFeed(
+  feed: Feed,
+  onProgress: (items: AnyFeedItem[]) => void,
+  limit?: number
+) {
   const query = buildSearchQuery(feed.keywords, feed.negativeKeywords)
   if (feed.feedType === 'events') {
-    return searchEvents(query, { limit, negativeKeywords: feed.negativeKeywords, naturalDescription: feed.naturalDescription })
+    return searchEvents(query, {
+      limit,
+      negativeKeywords: feed.negativeKeywords,
+      naturalDescription: feed.naturalDescription,
+      onProgress,
+    })
   }
-  return searchFeed(query, { freshness: feed.freshness, limit, negativeKeywords: feed.negativeKeywords })
+  return searchFeed(query, {
+    freshness: feed.freshness,
+    limit,
+    negativeKeywords: feed.negativeKeywords,
+    naturalDescription: feed.naturalDescription,
+    onProgress,
+  })
 }
 
 export function useFeedSearch() {
@@ -21,13 +36,25 @@ export function useFeedSearch() {
 
     if (!force && !stale && (store.itemsCache[feed.id]?.length ?? 0) > 0) return
 
-    store.setLoadingState(feed.id, force ? 'refreshing' : 'loading')
+    // Clear existing items and start loading
+    store.setItems(feed.id, [])
+    store.setLoadingState(feed.id, 'loading')
+
+    let firstProgress = true
+
+    const onProgress = (items: AnyFeedItem[]) => {
+      const s = useFeedStore.getState()
+      if (firstProgress) {
+        firstProgress = false
+        s.setLoadingState(feed.id, 'streaming')
+      }
+      s.appendItems(feed.id, items)
+    }
 
     try {
-      const items = await fetchItemsForFeed(feed)
-      useFeedStore.getState().setItems(feed.id, items)
-      useFeedStore.getState().setLastFetchedAt(feed.id, Date.now())
+      await fetchItemsForFeed(feed, onProgress)
       useFeedStore.getState().setLoadingState(feed.id, 'idle')
+      useFeedStore.getState().setLastFetchedAt(feed.id, Date.now())
     } catch (err) {
       console.error('Feed fetch error:', err)
       useFeedStore.getState().setLoadingState(feed.id, 'error')

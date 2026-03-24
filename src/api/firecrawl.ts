@@ -42,6 +42,9 @@ interface ExtractedEvent {
   registrationUrl?: string
   organizer?: string
   location?: string
+  tags?: string[]
+  techStack?: string[]
+  teamSize?: string
   reasoning?: string
 }
 
@@ -84,29 +87,104 @@ async function batchAll<T>(fns: (() => Promise<T>)[], size: number): Promise<T[]
   return results
 }
 
+async function generateNewsQueries(
+  naturalDescription: string,
+  keywords: string[]
+): Promise<string[]> {
+  try {
+    const text = await callOpenRouter(
+      [
+        {
+          role: 'system',
+          content: `You generate Google search queries to find recent news articles.
+Return ONLY a JSON array of exactly 4 query strings. No explanation, no markdown.`,
+        },
+        {
+          role: 'user',
+          content: `User wants: "${naturalDescription}"
+Keywords: ${keywords.join(', ')}
+
+Generate 4 diverse search queries to find recent, high-quality news articles matching this intent.
+Rules:
+- Query 1: broad, comprehensive coverage of the main topic
+- Query 2: focus on latest news and recent developments (include "latest" or "2025" or "2026")
+- Query 3: cover a specific angle or sub-topic within the intent
+- Query 4: target analysis, insights, or in-depth coverage
+- NO site: prefixes — want diverse sources
+- Keep queries 3-7 words each
+Return JSON array only: ["query1","query2","query3","query4"]`,
+        },
+      ],
+      { maxTokens: 150 }
+    )
+    const match = text.match(/\[[\s\S]*\]/)
+    if (!match) return []
+    const parsed = JSON.parse(match[0])
+    return Array.isArray(parsed) ? parsed.filter((q): q is string => typeof q === 'string') : []
+  } catch {
+    return []
+  }
+}
+
 export async function searchFeed(
   query: string,
-  opts: { freshness?: string; limit?: number; negativeKeywords?: string[] } = {}
+  opts: {
+    freshness?: string
+    limit?: number
+    negativeKeywords?: string[]
+    naturalDescription?: string
+    onProgress?: (items: FeedItem[]) => void
+  } = {}
 ): Promise<FeedItem[]> {
   const apiKey = getApiKey()
   if (!apiKey) return getMockResults(query)
 
-  const res = await fetch(`${BASE}/search`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      query,
-      limit: opts.limit ?? SEARCH_LIMIT,
-      tbs: opts.freshness ?? 'qdr:d',
-      scrapeOptions: { formats: ['markdown'], onlyMainContent: true },
-    }),
-  })
+  const keywords = query.replace(/[()]/g, '').split(/ OR |-"[^"]*"/).map(s => s.trim()).filter(Boolean)
+  let queries: string[] = []
 
-  if (!res.ok) throw new Error(`Firecrawl API error: ${res.status}`)
-  const json: FirecrawlResponse = await res.json()
-  if (!json.success || !json.data) throw new Error(json.error ?? 'Unknown Firecrawl error')
-  const results = json.data.map(normalizeResult).filter(item => item.title && item.url)
-  return postFilter(results, opts.negativeKeywords ?? [])
+  if (opts.naturalDescription) {
+    queries = await generateNewsQueries(opts.naturalDescription, keywords)
+  }
+  if (queries.length === 0) {
+    queries = [query]
+  }
+
+  const seenUrls = new Set<string>()
+  const allResults: FeedItem[] = []
+
+  await Promise.all(
+    queries.map(async (q) => {
+      try {
+        const res = await fetch(`${BASE}/search`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({
+            query: q,
+            limit: opts.limit ?? SEARCH_LIMIT,
+            tbs: opts.freshness ?? 'qdr:d',
+            scrapeOptions: { formats: ['markdown'], onlyMainContent: true },
+          }),
+        })
+        if (!res.ok) return
+        const json: FirecrawlResponse = await res.json()
+        if (!json.success || !json.data) return
+
+        const results = json.data.map(normalizeResult).filter(item => item.title && item.url)
+        const newResults = results.filter(r => r.url && !seenUrls.has(r.url))
+        for (const r of newResults) seenUrls.add(r.url)
+
+        const filtered = postFilter(newResults, opts.negativeKeywords ?? [])
+        if (filtered.length > 0) {
+          opts.onProgress?.(filtered)
+          allResults.push(...filtered)
+        }
+      } catch {
+        // skip failed queries
+      }
+    })
+  )
+
+  return allResults.slice(0, 30)
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
@@ -145,7 +223,7 @@ async function analyzeWithAI(
   }
 ): Promise<ExtractedEvent> {
   const today = new Date().toISOString().split('T')[0]
-  const truncated = markdown.slice(0, 4000)
+  const truncated = markdown.slice(0, 6000)
   const negPrompt = opts.negativeKeywords.length
     ? `\nExclude if related to: ${opts.negativeKeywords.join(', ')}.`
     : ''
@@ -167,6 +245,9 @@ If this is a LIST or AGGREGATOR page with multiple events → set isEvent:false,
 
 STEP 3 — If isEvent is true, extract:
 name, description (1-2 sentences), prizes (total prize pool as string e.g. "$50,000"), deadline (ISO), startDate (ISO), endDate (ISO), registrationUrl, organizer, location (city and country where event is held, or "online" if virtual, or "hybrid").
+tags: array of short track/theme labels max 5 (e.g. "DeFi", "AI/ML", "GameFi", "Web3", "Zero Knowledge", "Mobile", "Sustainability") — only if explicitly mentioned.
+techStack: array of required technologies max 5 (e.g. "Solidity", "Python", "React") — only if explicitly required.
+teamSize: team size requirement as a short string (e.g. "solo or teams up to 4") — only if explicitly stated, otherwise omit.
 
 STATUS — check all dates carefully:
 - "ended": deadline < ${today}, OR endDate < ${today}, OR page says "submission period ended" / "results announced" / "winners" / "concluded" / "closed"
@@ -177,7 +258,7 @@ When uncertain → default to "ended".
 reasoning: 2-3 sentences — state what type of page it is, whether it matches the user's intent, what dates you found, and why you set the status.
 
 JSON shape:
-{"isEvent":bool,"isEventList":bool,"eventLinks":[],"name":"","description":"","prizes":"","deadline":"","startDate":"","endDate":"","status":"active|upcoming|ended","registrationUrl":"","organizer":"","location":"","reasoning":""}`
+{"isEvent":bool,"isEventList":bool,"eventLinks":[],"name":"","description":"","prizes":"","deadline":"","startDate":"","endDate":"","status":"active|upcoming|ended","registrationUrl":"","organizer":"","location":"","tags":[],"techStack":[],"teamSize":"","reasoning":""}`
 
   const userMsg = `URL: ${url}\n\nPage content:\n${truncated}`
 
@@ -187,7 +268,7 @@ JSON shape:
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userMsg },
       ],
-      { maxTokens: 600 }
+      { maxTokens: 800 }
     )
     const match = text.match(/\{[\s\S]*\}/)
     if (!match) return { isEvent: false, isEventList: false, reasoning: 'AI returned no JSON' }
@@ -225,6 +306,9 @@ function makeEventItem(extracted: ExtractedEvent, meta: FirecrawlSearchResult | 
     registrationUrl: extracted.registrationUrl,
     organizer: extracted.organizer,
     location: extracted.location,
+    tags: extracted.tags?.length ? extracted.tags : undefined,
+    techStack: extracted.techStack?.length ? extracted.techStack : undefined,
+    teamSize: extracted.teamSize || undefined,
   }
 }
 
@@ -302,24 +386,27 @@ async function generateSearchQueries(
         {
           role: 'system',
           content: `You generate Google search queries to find open hackathons and competitions.
-Return ONLY a JSON array of exactly 5 query strings. No explanation, no markdown.`,
+Return ONLY a JSON array of exactly 8 query strings. No explanation, no markdown.`,
         },
         {
           role: 'user',
           content: `User wants: "${naturalDescription}"
 Keywords: ${keywords.join(', ')}
 
-Generate 5 specific search queries to find CURRENTLY OPEN events matching this intent.
+Generate 8 diverse search queries to find CURRENTLY OPEN events matching this intent.
 Rules:
-- Be highly specific to the exact topic — do NOT generate generic "prize competition" queries
-- Include 2 queries with site: prefixes for platforms where these events are listed (choose from: devpost.com, dorahacks.io, ethglobal.com, gitcoin.co, buidlbox.io, hackerearth.com, replit.com/bounties based on topic)
-- Target registration/submission pages, not news articles
-- Each query should include "2026" and either "register" or "open" or "submit"
-- Keep queries short (4-8 words each)
-Return JSON array only: ["query1","query2","query3","query4","query5"]`,
+- 3 queries MUST use site: prefixes for platforms where these events are listed. Choose the most relevant from: devpost.com, dorahacks.io, ethglobal.com, gitcoin.co, buidlbox.io, lablab.ai, devfolio.co, mlh.io, unstop.com, taikai.network
+- 2 queries should target open/upcoming events with deadline urgency (include "open" or "upcoming" or "deadline 2026")
+- 1 query should focus on prizes (include "prize" or "prize pool")
+- 1 broad discovery query (include "hackathon" or "competition" or "challenge")
+- 1 registration-focused query (include "register" or "apply" or "submit")
+- All queries MUST include "2026"
+- Be HIGHLY SPECIFIC to the exact topic — never generate generic queries
+- Keep queries short: 4-8 words each
+Return JSON array only: ["q1","q2","q3","q4","q5","q6","q7","q8"]`,
         },
       ],
-      { maxTokens: 200 }
+      { maxTokens: 300 }
     )
     const match = text.match(/\[[\s\S]*\]/)
     if (!match) return []
@@ -342,7 +429,7 @@ async function runParallelSearches(
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
           body: JSON.stringify({
             query: q,
-            limit: 8,
+            limit: 10,
             tbs: 'qdr:m',
             scrapeOptions: { formats: ['markdown'], onlyMainContent: true },
           }),
@@ -367,12 +454,17 @@ async function runParallelSearches(
       }
     }
   }
-  return merged.slice(0, 25)
+  return merged.slice(0, 40)
 }
 
 export async function searchEvents(
   query: string,
-  opts: { limit?: number; negativeKeywords?: string[]; naturalDescription?: string } = {}
+  opts: {
+    limit?: number
+    negativeKeywords?: string[]
+    naturalDescription?: string
+    onProgress?: (items: EventItem[]) => void
+  } = {}
 ): Promise<EventItem[]> {
   const apiKey = getApiKey()
   if (!apiKey) return getMockEventResults(query)
@@ -409,59 +501,66 @@ export async function searchEvents(
 
   // Shared set — prevents any URL from being scraped/analyzed more than once
   const processedUrls = new Set<string>()
-
-  // Phase 2: scrape + analyze in batches of 3 to stay within rate limits
   const processOpts = { negativeKeywords, naturalDescription: opts.naturalDescription, phase: 'scrape' as const, processedUrls }
-  const phase2Results = await batchAll(
-    topUrls.map(url => () => processUrl(url, apiKey, processOpts, metaMap.get(url))),
-    3
-  )
 
-  const events: EventItem[] = []
+  // Incremental dedup state (so each progress batch has only new items)
+  const seenUrl = new Set<string>()
+  const seenIdentity = new Set<string>()
+  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
+  const allEvents: EventItem[] = []
+
+  function addIfNew(event: EventItem): boolean {
+    if (seenUrl.has(event.url)) return false
+    const key = `${normalize(event.title)}|${event.deadline ?? ''}`
+    if (seenIdentity.has(key)) return false
+    seenUrl.add(event.url)
+    seenIdentity.add(key)
+    allEvents.push(event)
+    return true
+  }
+
+  // Phase 2: scrape + analyze in batches of 5
   const subLinkJobs: (() => Promise<void>)[] = []
 
-  for (const result of phase2Results) {
-    if (result.event) events.push(result.event)
-    if (result.subLinks?.length) {
-      // Dedupe sub-links before queuing
-      const links = [...new Set(result.subLinks)].filter(u => !processedUrls.has(u)).slice(0, 15)
-      subLinkJobs.push(async () => {
-        const subResults = await batchAll(
-          links.map(subUrl => () => processUrl(subUrl, apiKey, { ...processOpts, phase: 'sublink' })),
-          3
-        )
-        for (const sr of subResults) {
-          if (sr.event) events.push(sr.event)
-        }
-      })
+  for (let i = 0; i < topUrls.length; i += 5) {
+    const batchUrls = topUrls.slice(i, i + 5)
+    const batchResults = await Promise.all(
+      batchUrls.map(url => processUrl(url, apiKey, processOpts, metaMap.get(url)))
+    )
+
+    const batchEvents: EventItem[] = []
+    for (const result of batchResults) {
+      if (result.event && addIfNew(result.event)) {
+        batchEvents.push(result.event)
+      }
+      if (result.subLinks?.length) {
+        const links = [...new Set(result.subLinks)].filter(u => !processedUrls.has(u)).slice(0, 25)
+        subLinkJobs.push(async () => {
+          const subResults = await batchAll(
+            links.map(subUrl => () => processUrl(subUrl, apiKey, { ...processOpts, phase: 'sublink' })),
+            5
+          )
+          const subBatchEvents: EventItem[] = []
+          for (const sr of subResults) {
+            if (sr.event && addIfNew(sr.event)) {
+              subBatchEvents.push(sr.event)
+            }
+          }
+          const filteredSub = postFilter(subBatchEvents, negativeKeywords) as EventItem[]
+          if (filteredSub.length > 0) opts.onProgress?.(filteredSub)
+        })
+      }
     }
+
+    const filteredBatch = postFilter(batchEvents, negativeKeywords) as EventItem[]
+    if (filteredBatch.length > 0) opts.onProgress?.(filteredBatch)
   }
 
   // Process sub-link jobs sequentially to avoid overloading
   for (const job of subLinkJobs) await job()
 
-  // Dedupe by URL
-  const seenUrl = new Set<string>()
-  const urlDeduped = events.filter(e => {
-    if (seenUrl.has(e.url)) return false
-    seenUrl.add(e.url)
-    return true
-  })
-
-  // Dedupe by event identity (same name + same deadline = same event covered by multiple sites)
-  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
-  const seenIdentity = new Set<string>()
-  const deduped = urlDeduped.filter(e => {
-    const key = `${normalize(e.title)}|${e.deadline ?? ''}`
-    if (seenIdentity.has(key)) return false
-    seenIdentity.add(key)
-    return true
-  })
-
-  // Post-filter by negative keywords on title/summary
-  const filtered = postFilter(deduped, negativeKeywords) as EventItem[]
-
-  // Sort by deadline ascending, nulls last
+  // Post-filter final result and sort by deadline
+  const filtered = postFilter(allEvents, negativeKeywords) as EventItem[]
   filtered.sort((a, b) => {
     if (!a.deadline && !b.deadline) return 0
     if (!a.deadline) return 1
@@ -496,10 +595,13 @@ function getMockEventResults(query: string): EventItem[] {
     url: `https://example.com/hackathon-${i + 1}`,
     source: ['devpost.com', 'dorahacks.io', 'ethglobal.com', 'gitcoin.co', 'buidlbox.io'][i % 5],
     prizes: ['$50,000', '$25,000', '$100,000', '$10,000', '$75,000'][i % 5],
+    prizeAmount: [50000, 25000, 100000, 10000, 75000][i % 5],
     deadline: new Date(now + (i + 1) * 7 * 86400000).toISOString(),
     startDate: new Date(now - 7 * 86400000).toISOString(),
     status: 'active' as const,
     registrationUrl: `https://example.com/hackathon-${i + 1}/register`,
     organizer: ['ETHGlobal', 'Gitcoin', 'DoraHacks', 'Buidlbox', 'DevPost'][i % 5],
+    tags: [['DeFi', 'Web3'], ['AI/ML'], ['GameFi', 'NFT'], ['Zero Knowledge'], ['Mobile', 'Web3']][i % 5],
+    techStack: [['Solidity', 'React'], ['Python'], ['Unity', 'Solidity'], ['Rust'], ['React Native']][i % 5],
   }))
 }

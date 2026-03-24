@@ -105,9 +105,35 @@ export function EventCard({ item, highlighted, index, compact = false }: EventCa
           {truncate(item.title, 100)}
         </h3>
 
-        {/* Organizer */}
-        {item.organizer && (
-          <p className="text-xs text-muted-foreground mb-2">by {item.organizer}</p>
+        {/* Organizer + team size */}
+        {(item.organizer || item.teamSize) && (
+          <p className="text-xs text-muted-foreground mb-2">
+            {item.organizer && <span>by {item.organizer}</span>}
+            {item.organizer && item.teamSize && <span className="mx-1.5 opacity-40">·</span>}
+            {item.teamSize && <span>{item.teamSize}</span>}
+          </p>
+        )}
+
+        {/* Tags */}
+        {item.tags && item.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {item.tags.slice(0, 4).map(tag => (
+              <span key={tag} className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-primary/10 text-primary">
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Tech stack */}
+        {item.techStack && item.techStack.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {item.techStack.slice(0, 3).map(tech => (
+              <span key={tech} className="text-[10px] px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground">
+                {tech}
+              </span>
+            ))}
+          </div>
         )}
 
         {/* Description */}
