@@ -1,9 +1,15 @@
 import { useCallback } from 'react'
 import { useFeedStore } from '@/store/useFeedStore'
 import { searchFeed, searchEvents } from '@/api/firecrawl'
+import { dbSaveItems } from '@/lib/supabase'
 import { buildSearchQuery } from '@/lib/utils'
-import { REFRESH_INTERVAL_MS } from '@/lib/constants'
 import type { Feed, AnyFeedItem } from '@/types/feed'
+
+// Events change infrequently — cache 4 hours. News is time-sensitive — 30 min.
+const REFRESH_INTERVAL_MS = {
+  events: 4 * 60 * 60 * 1000,
+  news: 30 * 60 * 1000,
+}
 
 async function fetchItemsForFeed(
   feed: Feed,
@@ -32,7 +38,8 @@ export function useFeedSearch() {
   const fetchFeed = useCallback(async (feed: Feed, force = false) => {
     const store = useFeedStore.getState()
     const lastFetched = store.lastFetchedAt[feed.id] ?? 0
-    const stale = Date.now() - lastFetched > REFRESH_INTERVAL_MS
+    const interval = REFRESH_INTERVAL_MS[feed.feedType] ?? REFRESH_INTERVAL_MS.news
+    const stale = Date.now() - lastFetched > interval
 
     if (!force && !stale && (store.itemsCache[feed.id]?.length ?? 0) > 0) return
 
@@ -53,8 +60,11 @@ export function useFeedSearch() {
 
     try {
       await fetchItemsForFeed(feed, onProgress)
+      const finalItems = useFeedStore.getState().itemsCache[feed.id] ?? []
       useFeedStore.getState().setLoadingState(feed.id, 'idle')
       useFeedStore.getState().setLastFetchedAt(feed.id, Date.now())
+      // Persist to Supabase in background
+      dbSaveItems(feed.id, finalItems).catch(console.error)
     } catch (err) {
       console.error('Feed fetch error:', err)
       useFeedStore.getState().setLoadingState(feed.id, 'error')

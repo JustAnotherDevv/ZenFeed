@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Feed, AnyFeedItem, TranscriptMessage, AgentStatus, LoadingState } from '@/types/feed'
 import { generateId } from '@/lib/utils'
+import { dbUpsertFeed, dbDeleteFeed } from '@/lib/supabase'
 
 interface FeedStore {
   // Persisted
@@ -18,6 +19,7 @@ interface FeedStore {
   transcript: TranscriptMessage[]
 
   // Actions
+  setFeeds: (feeds: Feed[]) => void
   addFeed: (feed: Omit<Feed, 'id' | 'createdAt'>) => string
   updateFeed: (id: string, patch: Partial<Feed>) => void
   deleteFeed: (id: string) => void
@@ -48,14 +50,21 @@ export const useFeedStore = create<FeedStore>()(
       agentStatus: 'idle',
       transcript: [],
 
+      setFeeds: (feeds) => set({ feeds }),
+
       addFeed: (feed) => {
         const id = generateId()
-        set((s) => ({ feeds: [...s.feeds, { ...feed, id, createdAt: Date.now() }] }))
+        const newFeed = { ...feed, id, createdAt: Date.now() }
+        set((s) => ({ feeds: [...s.feeds, newFeed] }))
+        dbUpsertFeed(newFeed)
         return id
       },
 
-      updateFeed: (id, patch) =>
-        set((s) => ({ feeds: s.feeds.map((f) => (f.id === id ? { ...f, ...patch } : f)) })),
+      updateFeed: (id, patch) => {
+        set((s) => ({ feeds: s.feeds.map((f) => (f.id === id ? { ...f, ...patch } : f)) }))
+        const updated = get().feeds.find(f => f.id === id)
+        if (updated) dbUpsertFeed(updated)
+      },
 
       deleteFeed: (id) => {
         const { feeds, activeIndex } = get()
@@ -69,6 +78,7 @@ export const useFeedStore = create<FeedStore>()(
           const { [id]: _hi, ...highlightedItem } = s.highlightedItem
           return { feeds: newFeeds, activeIndex: idx <= activeIndex ? Math.max(0, newIdx) : activeIndex, itemsCache, loadingState, lastFetchedAt, highlightedItem }
         })
+        dbDeleteFeed(id)
       },
 
       setActiveIndex: (i) => set({ activeIndex: i }),

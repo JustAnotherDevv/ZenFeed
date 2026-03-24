@@ -24,3 +24,4 @@ lint.sh
 *.njsproj
 *.sln
 *.sw?
+.vercel

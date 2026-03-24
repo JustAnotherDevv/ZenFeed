@@ -24,7 +24,7 @@ export function OnboardingScreen() {
   const [parsedNegKeywords, setParsedNegKeywords] = useState<string[]>([])
   const [parsedFeedType, setParsedFeedType] = useState<FeedType>('news')
 
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const recognitionRef = useRef<any>(null)
   const store = useFeedStore()
   const { fetchFeed } = useFeedSearch()
 
@@ -51,14 +51,14 @@ export function OnboardingScreen() {
   }, [description])
 
   const toggleVoice = useCallback(() => {
-    const SR = window.SpeechRecognition ?? (window as any).webkitSpeechRecognition
+    const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition
     if (!SR) return
     if (isListening) { recognitionRef.current?.stop(); setIsListening(false); return }
     const rec = new SR()
     rec.continuous = false
     rec.interimResults = false
     rec.lang = 'en-US'
-    rec.onresult = (e: SpeechRecognitionEvent) => {
+    rec.onresult = (e: any) => {
       const t = e.results[0]?.[0]?.transcript ?? ''
       if (t) setDescription((prev) => prev ? prev + ' ' + t : t)
       setIsListening(false)

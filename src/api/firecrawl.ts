@@ -421,8 +421,9 @@ async function runParallelSearches(
   queries: string[],
   apiKey: string,
 ): Promise<FirecrawlSearchResult[]> {
+  // Alternate freshness: odd-indexed queries use qdr:y (past year) for broader reach
   const results = await Promise.all(
-    queries.map(async q => {
+    queries.map(async (q, i) => {
       try {
         const res = await fetch(`${BASE}/search`, {
           method: 'POST',
@@ -430,7 +431,7 @@ async function runParallelSearches(
           body: JSON.stringify({
             query: q,
             limit: 10,
-            tbs: 'qdr:m',
+            tbs: i % 2 === 0 ? 'qdr:y' : 'qdr:m',
             scrapeOptions: { formats: ['markdown'], onlyMainContent: true },
           }),
         })
@@ -454,7 +455,7 @@ async function runParallelSearches(
       }
     }
   }
-  return merged.slice(0, 40)
+  return merged.slice(0, 60)
 }
 
 export async function searchEvents(
@@ -534,7 +535,7 @@ export async function searchEvents(
         batchEvents.push(result.event)
       }
       if (result.subLinks?.length) {
-        const links = [...new Set(result.subLinks)].filter(u => !processedUrls.has(u)).slice(0, 25)
+        const links = [...new Set(result.subLinks)].filter(u => !processedUrls.has(u)).slice(0, 35)
         subLinkJobs.push(async () => {
           const subResults = await batchAll(
             links.map(subUrl => () => processUrl(subUrl, apiKey, { ...processOpts, phase: 'sublink' })),
@@ -556,8 +557,8 @@ export async function searchEvents(
     if (filteredBatch.length > 0) opts.onProgress?.(filteredBatch)
   }
 
-  // Process sub-link jobs sequentially to avoid overloading
-  for (const job of subLinkJobs) await job()
+  // Process sub-link jobs in parallel (each job is already internally rate-limited)
+  await Promise.all(subLinkJobs.map(job => job()))
 
   // Post-filter final result and sort by deadline
   const filtered = postFilter(allEvents, negativeKeywords) as EventItem[]

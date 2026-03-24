@@ -43,7 +43,7 @@ export function CreateFeedModal({ open, onOpenChange }: CreateFeedModalProps) {
   const [parsedNegKeywords, setParsedNegKeywords] = useState<string[]>([])
   const [parsed, setParsed] = useState(false)
 
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const recognitionRef = useRef<any>(null)
   const store = useFeedStore()
   const { fetchFeed } = useFeedSearch()
 
@@ -110,7 +110,7 @@ export function CreateFeedModal({ open, onOpenChange }: CreateFeedModalProps) {
   }
 
   const toggleVoice = useCallback(() => {
-    const SpeechRecognition = window.SpeechRecognition ?? (window as any).webkitSpeechRecognition
+    const SpeechRecognition = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition
     if (!SpeechRecognition) return
 
     if (isListening) {
@@ -123,7 +123,7 @@ export function CreateFeedModal({ open, onOpenChange }: CreateFeedModalProps) {
     rec.continuous = false
     rec.interimResults = false
     rec.lang = 'en-US'
-    rec.onresult = (e) => {
+    rec.onresult = (e: any) => {
       const transcript = e.results[0]?.[0]?.transcript ?? ''
       if (transcript) setDescription((prev) => (prev ? prev + ' ' + transcript : transcript))
       setIsListening(false)

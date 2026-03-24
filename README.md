@@ -2,7 +2,7 @@
 
 **Personalized AI feed aggregator with real-time web extraction and a voice companion.**
 
-ZenFeed lets you describe what you want to track in plain language — *"find active web3 hackathons with prizes"* or *"VC funding news, no crypto"* — and instantly generates a live, structured feed from the open web. A hands-free voice companion reads your feed aloud and accepts spoken commands to search, filter, and mutate feeds in real time.
+ZenFeed lets you describe what you want to track in plain language — _"find active web3 hackathons with prizes"_ or _"Show me list of events happening in London this month"_ — and instantly generates a live, structured feed from the open web. A hands-free voice companion reads your feed aloud and accepts spoken commands to search, filter, and mutate feeds in real time.
 
 Built for the **Firecrawl × ElevenLabs hackathon**.
 
@@ -38,13 +38,13 @@ The voice orb connects to an **ElevenLabs conversational AI agent** over WebRTC 
 
 Three client tools are registered that give the agent real capabilities — not just answers:
 
-| Tool | What it does |
-|---|---|
-| `searchMore(query)` | Triggers a new Firecrawl search, appends results to the current feed |
-| `addTopicToFeed(topic)` | Adds a keyword to the active feed and re-fetches |
-| `openArticle(index)` | Highlights and scrolls to a card by index |
+| Tool                    | What it does                                                         |
+| ----------------------- | -------------------------------------------------------------------- |
+| `searchMore(query)`     | Triggers a new Firecrawl search, appends results to the current feed |
+| `addTopicToFeed(topic)` | Adds a keyword to the active feed and re-fetches                     |
+| `openArticle(index)`    | Highlights and scrolls to a card by index                            |
 
-Say *"summarize my feed"*, *"add DeFi to my topics"*, or *"open article 3"* — it responds and acts.
+Say _"summarize my feed"_, _"add DeFi to my topics"_, or _"open article 3"_ — it responds and acts.
 
 ---
 
@@ -66,14 +66,14 @@ Say *"summarize my feed"*, *"add DeFi to my topics"*, or *"open article 3"* — 
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Web scraping & search | **Firecrawl** `/v1/search` + `/v1/scrape` |
-| Voice companion | **ElevenLabs** Conversational Agent (WebRTC) |
-| AI analysis & query generation | **OpenRouter** — Gemini 2.0 Flash Lite |
-| Frontend | React 19 + Vite + TypeScript |
-| Styling | Tailwind CSS v4 + shadcn/ui |
-| State | Zustand with persist middleware |
+| Layer                          | Technology                                   |
+| ------------------------------ | -------------------------------------------- |
+| Web scraping & search          | **Firecrawl** `/v1/search` + `/v1/scrape`    |
+| Voice companion                | **ElevenLabs** Conversational Agent (WebRTC) |
+| AI analysis & query generation | **OpenRouter** — Gemini 2.0 Flash Lite       |
+| Frontend                       | React 19 + Vite + TypeScript                 |
+| Styling                        | Tailwind CSS v4 + shadcn/ui                  |
+| State                          | Zustand with persist middleware              |
 
 ---
 
@@ -95,6 +95,7 @@ VITE_OPENROUTER_KEY=your_openrouter_key
 The app runs fully on mock data without API keys. With keys, all three services activate automatically.
 
 **Getting keys:**
+
 - Firecrawl — [firecrawl.dev](https://firecrawl.dev)
 - ElevenLabs — create a Conversational Agent at [elevenlabs.io](https://elevenlabs.io), copy the agent ID
 - OpenRouter — [openrouter.ai](https://openrouter.ai) · Gemini 2.0 Flash Lite costs ~$0.075 / 1M tokens

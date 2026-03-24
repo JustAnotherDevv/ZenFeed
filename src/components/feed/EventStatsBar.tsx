@@ -11,7 +11,7 @@ function formatMoney(n: number): string {
   return `$${n}`
 }
 
-export function EventStatsBar({ items, intent }: EventStatsBarProps) {
+export function EventStatsBar({ items }: EventStatsBarProps) {
   if (items.length === 0) return null
 
   const active = items.filter(e => e.status === 'active').length
