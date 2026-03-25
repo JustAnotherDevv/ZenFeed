@@ -13,46 +13,48 @@ export function TopBar({ onAddFeed, onRefresh, isRefreshing, onSettings }: TopBa
   const openDebug = () => useDebugStore.getState().setOpen(true)
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 bg-background border-b border-border">
-      <div className="flex items-center gap-2">
-        <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-          <span className="text-primary-foreground font-bold text-xs">Z</span>
+    <div className="flex items-center justify-between px-4 py-2.5 bg-background border-b border-border">
+      <div className="flex items-center gap-3">
+        <div className="w-7 h-7 border border-primary flex items-center justify-center">
+          <span className="text-primary font-mono font-medium text-xs">Z</span>
         </div>
-        <span className="font-bold text-foreground text-lg tracking-tight">ZenFeed</span>
+        <span className="font-mono font-medium text-foreground text-sm tracking-[0.15em] uppercase">
+          ZenFeed
+        </span>
       </div>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-0.5">
         {onRefresh && (
           <button
             onClick={onRefresh}
             disabled={isRefreshing}
-            className="w-9 h-9 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40"
+            className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-30"
           >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
           </button>
         )}
         <button
           onClick={openDebug}
-          className="relative w-9 h-9 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          className="relative w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
           title="Extraction debug"
         >
-          <Bug className="w-4 h-4" />
+          <Bug className="w-3.5 h-3.5" />
           {debugEntryCount > 0 && (
-            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-primary" />
+            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary" />
           )}
         </button>
         {onSettings && (
           <button
             onClick={onSettings}
-            className="w-9 h-9 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
           >
-            <Settings className="w-4 h-4" />
+            <Settings className="w-3.5 h-3.5" />
           </button>
         )}
         <button
           onClick={onAddFeed}
-          className="w-9 h-9 flex items-center justify-center rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+          className="w-8 h-8 flex items-center justify-center border border-primary/40 text-primary hover:bg-primary/10 transition-colors ml-1"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-4 h-4" />
         </button>
       </div>
     </div>

@@ -17,17 +17,17 @@ export function FeedTabBar({ feeds, activeIndex, onSelect }: FeedTabBarProps) {
 
   return (
     <div className="flex overflow-x-auto scrollbar-hide border-b border-border bg-background">
-      <div className="flex px-2 py-1 gap-1 min-w-max">
+      <div className="flex min-w-max">
         {feeds.map((feed, i) => (
           <button
             key={feed.id}
             ref={(el) => { tabRefs.current[i] = el }}
             onClick={() => onSelect(i)}
             className={cn(
-              'px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors',
+              'px-4 py-2.5 text-[11px] font-mono uppercase tracking-wider whitespace-nowrap transition-colors border-b-2',
               i === activeIndex
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                ? 'border-b-primary text-primary'
+                : 'border-b-transparent text-muted-foreground hover:text-foreground'
             )}
           >
             {feed.name}

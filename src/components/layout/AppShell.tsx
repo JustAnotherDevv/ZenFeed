@@ -66,15 +66,15 @@ export function AppShell() {
 
       <div className="flex flex-1 min-h-0">
         {/* Sidebar — desktop only */}
-        <aside className="hidden lg:flex flex-col w-56 shrink-0 border-r border-border bg-background py-3 px-2 gap-1 overflow-y-auto">
+        <aside className="hidden lg:flex flex-col w-52 shrink-0 border-r border-border bg-background py-2 px-0 gap-0 overflow-y-auto">
           {feeds.map((feed, i) => (
             <button
               key={feed.id}
               onClick={() => handleTabSelect(i)}
-              className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium transition-colors truncate ${
+              className={`w-full text-left px-3 py-2.5 text-xs font-mono transition-colors truncate border-l-2 ${
                 i === activeIndex
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  ? "border-l-primary text-primary bg-primary/5"
+                  : "border-l-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40"
               }`}
             >
               {feed.name}
@@ -82,9 +82,9 @@ export function AppShell() {
           ))}
           <button
             onClick={() => setCreateOpen(true)}
-            className="w-full text-left px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors mt-1 border border-dashed border-border"
+            className="w-full text-left px-3 py-2.5 text-xs font-mono text-muted-foreground hover:text-primary transition-colors mt-1 border-l-2 border-l-transparent border-t border-t-border"
           >
-            + Add feed
+            + add feed
           </button>
         </aside>
 
@@ -100,9 +100,9 @@ export function AppShell() {
             className="feed-pager flex-1 min-h-0"
             onScroll={handlePagerScroll}
           >
-            {feeds.map((feed) => (
+            {feeds.map((feed, i) => (
               <div key={feed.id} className="feed-page">
-                <FeedView feed={feed} />
+                <FeedView feed={feed} isActive={i === activeIndex} />
               </div>
             ))}
 

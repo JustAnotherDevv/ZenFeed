@@ -1,113 +1,94 @@
 @import "tailwindcss";
 
+/* ─── Cypherpunk / Terminal Dark Theme ──────────────────────────────────────
+   Void black background · Phosphor green accent · JetBrains Mono everywhere
+   No light mode. Always dark.
+   ─────────────────────────────────────────────────────────────────────────── */
+
 @theme {
-  --color-background: hsl(0 0% 100%);
-  --color-foreground: hsl(240 10% 3.9%);
-  --color-card: hsl(0 0% 100%);
-  --color-card-foreground: hsl(240 10% 3.9%);
-  --color-primary: hsl(262 83% 58%);
-  --color-primary-foreground: hsl(0 0% 100%);
-  --color-secondary: hsl(240 4.8% 95.9%);
-  --color-secondary-foreground: hsl(240 5.9% 10%);
-  --color-muted: hsl(240 4.8% 95.9%);
-  --color-muted-foreground: hsl(240 3.8% 46.1%);
-  --color-accent: hsl(240 4.8% 95.9%);
-  --color-accent-foreground: hsl(240 5.9% 10%);
-  --color-destructive: hsl(0 84.2% 60.2%);
-  --color-destructive-foreground: hsl(0 0% 98%);
-  --color-border: hsl(240 5.9% 90%);
-  --color-input: hsl(240 5.9% 90%);
-  --color-ring: hsl(262 83% 58%);
-  --color-popover: hsl(0 0% 100%);
-  --color-popover-foreground: hsl(240 10% 3.9%);
+  /* Backgrounds */
+  --color-background:            hsl(214 33% 6%);
+  --color-card:                  hsl(214 28% 8%);
+  --color-popover:               hsl(213 22% 12%);
 
-  --radius-sm: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.25rem;
-  --radius-2xl: 1.5rem;
-  --radius-3xl: 2rem;
+  /* Foregrounds */
+  --color-foreground:            hsl(210 27% 93%);
+  --color-card-foreground:       hsl(210 27% 93%);
+  --color-popover-foreground:    hsl(210 27% 93%);
+
+  /* Primary — phosphor green */
+  --color-primary:               hsl(131 66% 52%);
+  --color-primary-foreground:    hsl(214 33% 6%);
+
+  /* Secondary / muted */
+  --color-secondary:             hsl(213 22% 12%);
+  --color-secondary-foreground:  hsl(210 27% 93%);
+  --color-muted:                 hsl(213 22% 12%);
+  --color-muted-foreground:      hsl(213 13% 58%);
+
+  /* Accent */
+  --color-accent:                hsl(213 22% 12%);
+  --color-accent-foreground:     hsl(210 27% 93%);
+
+  /* Destructive */
+  --color-destructive:           hsl(2 92% 63%);
+  --color-destructive-foreground: hsl(210 27% 93%);
+
+  /* Border / input / ring */
+  --color-border:                hsl(213 22% 15%);
+  --color-input:                 hsl(213 22% 15%);
+  --color-ring:                  hsl(131 66% 52%);
+
+  /* Border radius — all sharp (cypherpunk rule: no rounded corners) */
+  --radius-sm:   0px;
+  --radius-md:   0px;
+  --radius-lg:   0px;
+  --radius-xl:   0px;
+  --radius-2xl:  0px;
+  --radius-3xl:  0px;
 }
 
-/* Dark mode overrides */
-.dark {
-  --color-background: hsl(240 10% 3.9%);
-  --color-foreground: hsl(0 0% 98%);
-  --color-card: hsl(240 10% 6%);
-  --color-card-foreground: hsl(0 0% 98%);
-  --color-primary: hsl(262 83% 68%);
-  --color-primary-foreground: hsl(0 0% 100%);
-  --color-secondary: hsl(240 3.7% 15.9%);
-  --color-secondary-foreground: hsl(0 0% 98%);
-  --color-muted: hsl(240 3.7% 15.9%);
-  --color-muted-foreground: hsl(240 5% 64.9%);
-  --color-accent: hsl(240 3.7% 15.9%);
-  --color-accent-foreground: hsl(0 0% 98%);
-  --color-destructive: hsl(0 62.8% 30.6%);
-  --color-destructive-foreground: hsl(0 0% 98%);
-  --color-border: hsl(240 3.7% 15.9%);
-  --color-input: hsl(240 3.7% 15.9%);
-  --color-ring: hsl(262 83% 68%);
-  --color-popover: hsl(240 10% 6%);
-  --color-popover-foreground: hsl(0 0% 98%);
-}
-
-/* shadcn CSS variable compatibility layer */
+/* shadcn compatibility layer — must mirror @theme values */
 :root {
-  --background: 0 0% 100%;
-  --foreground: 240 10% 3.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 240 10% 3.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 3.9%;
-  --primary: 262 83% 58%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 240 4.8% 95.9%;
-  --secondary-foreground: 240 5.9% 10%;
-  --muted: 240 4.8% 95.9%;
-  --muted-foreground: 240 3.8% 46.1%;
-  --accent: 240 4.8% 95.9%;
-  --accent-foreground: 240 5.9% 10%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 240 5.9% 90%;
-  --input: 240 5.9% 90%;
-  --ring: 262 83% 58%;
-  --radius: 0.75rem;
+  --background:              214 33% 6%;
+  --foreground:              210 27% 93%;
+  --card:                    214 28% 8%;
+  --card-foreground:         210 27% 93%;
+  --popover:                 213 22% 12%;
+  --popover-foreground:      210 27% 93%;
+  --primary:                 131 66% 52%;
+  --primary-foreground:      214 33% 6%;
+  --secondary:               213 22% 12%;
+  --secondary-foreground:    210 27% 93%;
+  --muted:                   213 22% 12%;
+  --muted-foreground:        213 13% 58%;
+  --accent:                  213 22% 12%;
+  --accent-foreground:       210 27% 93%;
+  --destructive:             2 92% 63%;
+  --destructive-foreground:  210 27% 93%;
+  --border:                  213 22% 15%;
+  --input:                   213 22% 15%;
+  --ring:                    131 66% 52%;
+  --radius:                  0px;
 }
 
-.dark {
-  --background: 240 10% 3.9%;
-  --foreground: 0 0% 98%;
-  --card: 240 10% 6%;
-  --card-foreground: 0 0% 98%;
-  --popover: 240 10% 6%;
-  --popover-foreground: 0 0% 98%;
-  --primary: 262 83% 68%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 240 3.7% 15.9%;
-  --secondary-foreground: 0 0% 98%;
-  --muted: 240 3.7% 15.9%;
-  --muted-foreground: 240 5% 64.9%;
-  --accent: 240 3.7% 15.9%;
-  --accent-foreground: 0 0% 98%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 240 3.7% 15.9%;
-  --input: 240 3.7% 15.9%;
-  --ring: 262 83% 68%;
-}
+/* ─── Base ──────────────────────────────────────────────────────────────── */
 
 * {
   box-sizing: border-box;
   border-color: var(--color-border);
 }
 
+html {
+  background-color: hsl(214 33% 6%);
+}
+
 body {
   margin: 0;
   background-color: var(--color-background);
   color: var(--color-foreground);
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Menlo', 'Courier New', monospace;
+  font-size: 14px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -117,30 +98,62 @@ body {
   width: 100%;
 }
 
-/* Animations */
+/* ─── Utilities ─────────────────────────────────────────────────────────── */
+
+/* Terminal-style uppercase monospace label */
+.terminal-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-muted-foreground);
+}
+
+/* Phosphor green glow — use on active/focus interactive elements */
+.glow-green {
+  box-shadow: 0 0 0 1px #39d353, 0 0 12px rgba(57, 211, 83, 0.25);
+}
+
+/* Highlighted card — green glow border */
+.card-highlighted {
+  box-shadow: 0 0 0 1px #39d353, 0 0 16px rgba(57, 211, 83, 0.2);
+  transition: box-shadow 0.3s ease;
+}
+
+/* Blinking cursor animation */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+.animate-blink {
+  animation: blink 1s step-end infinite;
+}
+
+/* ─── Animations ────────────────────────────────────────────────────────── */
+
 @keyframes pulse-ring {
-  0% { transform: scale(1); opacity: 1; }
+  0%   { transform: scale(1);   opacity: 0.6; }
   100% { transform: scale(1.8); opacity: 0; }
 }
 
 @keyframes pulse-ring-fast {
-  0% { transform: scale(1); opacity: 0.8; }
+  0%   { transform: scale(1);   opacity: 0.5; }
   100% { transform: scale(2.2); opacity: 0; }
 }
 
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
 }
 
 @keyframes slide-up {
   from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+  to   { transform: translateY(0); }
 }
 
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .animate-pulse-ring {
@@ -152,7 +165,12 @@ body {
 }
 
 .animate-shimmer {
-  background: linear-gradient(90deg, var(--color-muted) 25%, var(--color-accent) 50%, var(--color-muted) 75%);
+  background: linear-gradient(
+    90deg,
+    hsl(213 22% 10%) 25%,
+    hsl(213 22% 16%) 50%,
+    hsl(213 22% 10%) 75%
+  );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
@@ -162,10 +180,11 @@ body {
 }
 
 .animate-fade-in {
-  animation: fade-in 0.4s ease-out;
+  animation: fade-in 0.35s ease-out;
 }
 
-/* Scroll snap for feed pager */
+/* ─── Feed Pager ────────────────────────────────────────────────────────── */
+
 .feed-pager {
   display: flex;
   overflow-x: auto;
@@ -186,13 +205,8 @@ body {
   height: 100%;
 }
 
-/* Highlighted card glow */
-.card-highlighted {
-  box-shadow: 0 0 0 2px var(--color-primary), 0 0 20px color-mix(in oklch, var(--color-primary) 30%, transparent);
-  transition: box-shadow 0.3s ease;
-}
+/* ─── Scrollbar hide ────────────────────────────────────────────────────── */
 
-/* scrollbar-hide utility */
 .scrollbar-hide {
   scrollbar-width: none;
 }

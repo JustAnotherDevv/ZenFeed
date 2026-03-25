@@ -13,6 +13,7 @@ import type { Feed, AnyFeedItem, EventItem } from '@/types/feed'
 
 interface FeedViewProps {
   feed: Feed
+  isActive?: boolean
 }
 
 const EMPTY_ITEMS: AnyFeedItem[] = []
@@ -54,7 +55,7 @@ function sortEvents(items: EventItem[], sort: SortKey): EventItem[] {
   }
 }
 
-export function FeedView({ feed }: FeedViewProps) {
+export function FeedView({ feed, isActive = true }: FeedViewProps) {
   const items = useFeedStore((s) => s.itemsCache[feed.id] ?? EMPTY_ITEMS)
   const loadingState = useFeedStore((s) => s.loadingState[feed.id] ?? 'idle')
   const highlightedItem = useFeedStore((s) => s.highlightedItem[feed.id] ?? null)
@@ -64,7 +65,10 @@ export function FeedView({ feed }: FeedViewProps) {
   const [view, setView] = useState<ViewMode>('list')
   const [sort, setSort] = useState<SortKey>('deadline_asc')
 
-  useEffect(() => { fetchFeed(feed) }, [feed.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Only auto-fetch when this feed is the active/visible one
+  useEffect(() => {
+    if (isActive) fetchFeed(feed)
+  }, [feed.id, isActive]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (highlightedItem !== null && cardRefs.current[highlightedItem]) {
@@ -91,14 +95,14 @@ export function FeedView({ feed }: FeedViewProps) {
   return (
     <div className="h-full overflow-y-auto" {...ptr}>
       {(isRefreshing || isStreaming) && (
-        <div className="flex items-center justify-center py-3 text-primary">
-          <RefreshCw className="w-4 h-4 animate-spin mr-2" />
-          <span className="text-xs font-medium">
+        <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-background">
+          <RefreshCw className="w-3 h-3 text-primary animate-spin shrink-0" />
+          <span className="terminal-label text-primary/70">
             {isStreaming
               ? (isEvents
-                  ? `Finding events… ${items.length > 0 ? `${items.length} found` : ''}`
-                  : `Finding articles… ${items.length > 0 ? `${items.length} found` : ''}`)
-              : (isEvents ? 'Extracting events…' : 'Refreshing…')
+                  ? `scanning // ${items.length > 0 ? `${items.length} found` : 'searching'}`
+                  : `scanning // ${items.length > 0 ? `${items.length} found` : 'searching'}`)
+              : (isEvents ? 'extracting events' : 'refreshing')
             }
           </span>
         </div>
@@ -110,10 +114,12 @@ export function FeedView({ feed }: FeedViewProps) {
             {Array.from({ length: 5 }).map((_, i) => <FeedCardSkeleton key={i} />)}
           </div>
         ) : isError && items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center px-6">
-            <AlertCircle className="w-10 h-10 text-destructive mb-3" />
-            <p className="text-sm text-muted-foreground mb-4">Failed to load feed</p>
-            <button onClick={handleRefresh} className="text-sm text-primary font-medium">Retry</button>
+          <div className="flex flex-col items-start py-16 px-2">
+            <AlertCircle className="w-5 h-5 text-destructive mb-3" />
+            <p className="terminal-label text-destructive mb-4">error // failed to load feed</p>
+            <button onClick={handleRefresh} className="terminal-label text-primary hover:text-primary/80 transition-colors">
+              &gt; retry
+            </button>
           </div>
         ) : items.length === 0 ? (
           <EmptyFeedState feedName={feed.name} onRetry={handleRefresh} />
@@ -128,7 +134,7 @@ export function FeedView({ feed }: FeedViewProps) {
             )}
 
             {/* Result count */}
-            <p className="text-xs text-muted-foreground px-1 pb-3">
+            <p className="terminal-label px-0 pb-3">
               {displayItems.length} {isEvents ? 'events' : 'results'}
             </p>
 
@@ -145,7 +151,7 @@ export function FeedView({ feed }: FeedViewProps) {
                 ))}
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {displayItems.map((item, i) => (
                   <div key={item.id} ref={(el) => { cardRefs.current[i] = el }}>
                     {isEventItem(item) ? (

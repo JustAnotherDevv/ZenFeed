@@ -176,8 +176,8 @@ export async function searchFeed(
   const seenUrls = new Set<string>()
   const allResults: FeedItem[] = []
 
-  await Promise.all(
-    queries.map(async (q) => {
+  await batchAll(
+    queries.map((q) => async () => {
       try {
         const res = await fetch(`${BASE}/search`, {
           method: 'POST',
@@ -205,7 +205,8 @@ export async function searchFeed(
       } catch {
         // skip failed queries
       }
-    })
+    }),
+    3
   )
 
   return allResults.slice(0, 30)
@@ -449,9 +450,9 @@ async function runParallelSearches(
   queries: string[],
   apiKey: string,
 ): Promise<FirecrawlSearchResult[]> {
-  // Alternate freshness: odd-indexed queries use qdr:y (past year) for broader reach
-  const results = await Promise.all(
-    queries.map(async (q, i) => {
+  // Run in batches of 4 to avoid rate-limiting on search endpoint
+  const results = await batchAll(
+    queries.map((q, i) => async () => {
       try {
         const res = await fetch(`${BASE}/search`, {
           method: 'POST',
@@ -463,13 +464,14 @@ async function runParallelSearches(
             scrapeOptions: { formats: ['markdown'], onlyMainContent: true },
           }),
         })
-        if (!res.ok) return []
+        if (!res.ok) return [] as FirecrawlSearchResult[]
         const json: FirecrawlResponse = await res.json()
-        return json.data?.filter(r => r.url) ?? []
+        return json.data?.filter(r => r.url) ?? [] as FirecrawlSearchResult[]
       } catch {
-        return []
+        return [] as FirecrawlSearchResult[]
       }
-    })
+    }),
+    4
   )
 
   // Merge and dedupe by URL, preserve order (first occurrence wins)

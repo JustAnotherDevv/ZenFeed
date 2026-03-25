@@ -1,9 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import { Newspaper, Search, Mic, MicOff, Wand2, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
 import { useFeedStore } from '@/store/useFeedStore'
 import { useFeedSearch } from '@/hooks/useFeedSearch'
 import { parseFeedDescription } from '@/api/claude'
@@ -140,9 +137,11 @@ export function CreateFeedModal({ open, onOpenChange }: CreateFeedModalProps) {
 
   return (
     <Sheet open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset() }}>
-      <SheetContent side="bottom" className="rounded-t-3xl max-h-[92vh] overflow-y-auto">
-        <SheetHeader className="mb-4">
-          <SheetTitle>Create Feed</SheetTitle>
+      <SheetContent side="bottom" className="max-h-[92vh] overflow-y-auto border-t border-border bg-background">
+        <SheetHeader className="mb-5">
+          <SheetTitle className="font-mono text-sm uppercase tracking-widest text-foreground">
+            &gt; new_feed
+          </SheetTitle>
         </SheetHeader>
 
         <div className="space-y-5 pb-8">
@@ -150,40 +149,40 @@ export function CreateFeedModal({ open, onOpenChange }: CreateFeedModalProps) {
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => { setFeedType('news'); setParsed(false) }}
-              className={`flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-medium transition-colors ${
+              className={`flex items-center justify-center gap-2 py-2.5 border font-mono text-xs uppercase tracking-wider transition-colors ${
                 feedType === 'news'
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'border-border text-muted-foreground hover:border-primary/40'
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border text-muted-foreground hover:border-primary/40 hover:text-foreground'
               }`}
             >
-              <Newspaper className="w-4 h-4" />
-              News Feed
+              <Newspaper className="w-3.5 h-3.5" />
+              News
             </button>
             <button
               onClick={() => { setFeedType('events'); setParsed(false) }}
-              className={`flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-medium transition-colors ${
+              className={`flex items-center justify-center gap-2 py-2.5 border font-mono text-xs uppercase tracking-wider transition-colors ${
                 feedType === 'events'
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'border-border text-muted-foreground hover:border-primary/40'
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border text-muted-foreground hover:border-primary/40 hover:text-foreground'
               }`}
             >
-              <Search className="w-4 h-4" />
+              <Search className="w-3.5 h-3.5" />
               Discovery
             </button>
           </div>
 
           {/* Quick Presets */}
           <div>
-            <Label className="text-xs text-muted-foreground mb-2 block">Quick presets</Label>
-            <div className="flex flex-wrap gap-2">
+            <p className="terminal-label mb-2">quick presets</p>
+            <div className="flex flex-wrap gap-1.5">
               {PRESETS.filter(p => p.feedType === feedType).map((p) => (
                 <button
                   key={p.name}
                   onClick={() => applyPreset(p)}
-                  className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                  className={`font-mono text-[10px] uppercase tracking-wider px-2.5 py-1 border transition-colors ${
                     description === p.description
-                      ? 'bg-primary/10 text-primary border-primary/30'
-                      : 'border-border bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/30'
+                      ? 'border-primary text-primary bg-primary/5'
+                      : 'border-border text-muted-foreground hover:border-primary/40 hover:text-foreground'
                   }`}
                 >
                   {p.name}
@@ -194,22 +193,20 @@ export function CreateFeedModal({ open, onOpenChange }: CreateFeedModalProps) {
 
           {/* Natural Language Input */}
           <div className="space-y-2">
-            <Label>Describe what you want</Label>
+            <p className="terminal-label">describe what you want</p>
             <div className="relative">
               <textarea
-                className="w-full min-h-[96px] rounded-xl border border-border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none pr-10"
+                className="w-full min-h-[96px] border border-border bg-card px-3 py-2.5 font-mono text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary resize-none pr-10"
                 placeholder={feedType === 'events'
-                  ? 'e.g. "I want to find active web3 hackathons with prizes, no job postings or past winner announcements"'
-                  : 'e.g. "Latest AI and machine learning news, no crypto spam"'}
+                  ? '"Active web3 hackathons with prizes, no job postings"'
+                  : '"Latest AI and ML news, no crypto spam"'}
                 value={description}
                 onChange={(e) => { setDescription(e.target.value); setParsed(false) }}
               />
               <button
                 onClick={toggleVoice}
-                className={`absolute top-2.5 right-2.5 p-1.5 rounded-lg transition-colors ${
-                  isListening
-                    ? 'bg-destructive/10 text-destructive animate-pulse'
-                    : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
+                className={`absolute top-2.5 right-2.5 p-1.5 transition-colors ${
+                  isListening ? 'text-destructive animate-pulse' : 'text-muted-foreground hover:text-primary'
                 }`}
                 title={isListening ? 'Stop recording' : 'Speak to describe your feed'}
               >
@@ -217,63 +214,62 @@ export function CreateFeedModal({ open, onOpenChange }: CreateFeedModalProps) {
               </button>
             </div>
             {isListening && (
-              <p className="text-xs text-destructive animate-pulse">Listening… speak now</p>
+              <p className="terminal-label text-destructive animate-pulse">listening // speak now</p>
             )}
           </div>
 
           {/* Generate Button */}
-          <Button
-            variant="outline"
-            className="w-full gap-2"
+          <button
+            className="w-full flex items-center justify-center gap-2 py-2.5 border border-border font-mono text-xs uppercase tracking-widest text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors disabled:opacity-30"
             onClick={handleGenerate}
             disabled={!description.trim() || isParsing}
           >
-            <Wand2 className="w-4 h-4" />
-            {isParsing ? 'Generating…' : 'Generate Feed Config'}
-          </Button>
+            <Wand2 className="w-3.5 h-3.5" />
+            {isParsing ? 'Generating...' : 'Generate Feed Config'}
+          </button>
 
           {/* Parsed Config Review */}
           {parsed && (
-            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+            <div className="border border-primary/30 bg-primary/5 p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-primary">Feed Preview</span>
-                <Badge variant="secondary" className="text-xs">{feedType}</Badge>
+                <span className="font-mono text-xs text-primary uppercase tracking-wider">feed preview</span>
+                <span className="terminal-label border border-border px-2 py-0.5">{feedType}</span>
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Feed name</Label>
+                <p className="terminal-label">feed name</p>
                 <input
-                  className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full border border-border bg-background px-3 py-1.5 font-mono text-sm text-foreground focus:outline-none focus:border-primary"
                   value={parsedName}
                   onChange={(e) => setParsedName(e.target.value)}
                 />
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Search keywords</Label>
+                <p className="terminal-label">keywords</p>
                 <div className="flex flex-wrap gap-1.5">
                   {parsedKeywords.map((kw) => (
-                    <Badge key={kw} variant="secondary" className="flex items-center gap-1 pr-1 text-xs">
+                    <span key={kw} className="inline-flex items-center gap-1 font-mono text-[10px] uppercase px-1.5 py-0.5 border border-border text-foreground">
                       {kw}
                       <button onClick={() => removeKeyword(kw)} className="hover:text-destructive ml-0.5">
-                        <X className="w-3 h-3" />
+                        <X className="w-2.5 h-2.5" />
                       </button>
-                    </Badge>
+                    </span>
                   ))}
                 </div>
               </div>
 
               {parsedNegKeywords.length > 0 && (
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Exclude</Label>
+                  <p className="terminal-label">exclude</p>
                   <div className="flex flex-wrap gap-1.5">
                     {parsedNegKeywords.map((kw) => (
-                      <Badge key={kw} variant="outline" className="flex items-center gap-1 pr-1 text-xs text-destructive border-destructive/30">
+                      <span key={kw} className="inline-flex items-center gap-1 font-mono text-[10px] uppercase px-1.5 py-0.5 border border-destructive/30 text-destructive/70">
                         -{kw}
                         <button onClick={() => removeNegKeyword(kw)} className="hover:text-destructive ml-0.5">
-                          <X className="w-3 h-3" />
+                          <X className="w-2.5 h-2.5" />
                         </button>
-                      </Badge>
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -283,10 +279,10 @@ export function CreateFeedModal({ open, onOpenChange }: CreateFeedModalProps) {
                 <div className="space-y-1.5 pt-1">
                   <button
                     onClick={() => setShowAdvanced(!showAdvanced)}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                    className="flex items-center gap-1 terminal-label hover:text-foreground transition-colors"
                   >
                     {showAdvanced ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                    Freshness
+                    freshness
                   </button>
                   {showAdvanced && (
                     <div className="flex gap-2">
@@ -294,9 +290,9 @@ export function CreateFeedModal({ open, onOpenChange }: CreateFeedModalProps) {
                         <button
                           key={opt.value}
                           onClick={() => setFreshness(opt.value)}
-                          className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                          className={`flex-1 py-1.5 font-mono text-[10px] uppercase tracking-wider border transition-colors ${
                             freshness === opt.value
-                              ? 'bg-primary text-primary-foreground border-primary'
+                              ? 'border-primary bg-primary/10 text-primary'
                               : 'border-border text-muted-foreground hover:border-primary/40'
                           }`}
                         >
@@ -310,13 +306,13 @@ export function CreateFeedModal({ open, onOpenChange }: CreateFeedModalProps) {
             </div>
           )}
 
-          <Button
-            className="w-full"
+          <button
+            className="w-full py-3 bg-primary text-primary-foreground font-mono text-xs uppercase tracking-widest hover:bg-primary/90 transition-colors disabled:opacity-30"
             onClick={handleCreate}
             disabled={!parsed || !parsedName.trim() || parsedKeywords.length === 0}
           >
             {feedType === 'events' ? 'Create Discovery Feed' : 'Create Feed'}
-          </Button>
+          </button>
         </div>
       </SheetContent>
     </Sheet>

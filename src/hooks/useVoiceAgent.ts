@@ -3,23 +3,59 @@ import { useConversation } from '@elevenlabs/react'
 import { useFeedStore } from '@/store/useFeedStore'
 import { searchFeed } from '@/api/firecrawl'
 import { buildSearchQuery } from '@/lib/utils'
-import { MAX_AGENT_CONTEXT_ITEMS } from '@/lib/constants'
-import type { Feed, FeedItem } from '@/types/feed'
+import type { Feed, AnyFeedItem, EventItem } from '@/types/feed'
 
-function buildDynamicVars(feed: Feed, items: FeedItem[]): Record<string, string> {
-  const top = items.slice(0, MAX_AGENT_CONTEXT_ITEMS)
-  const vars: Record<string, string> = {
+function isEvent(item: AnyFeedItem): item is EventItem {
+  return 'itemType' in item && item.itemType === 'event'
+}
+
+// Serialize entire feed into a compact text block for the agent.
+// Each line: "N. [STATUS] Title | Prizes | Deadline | Source | Summary"
+// Total length kept under 8000 chars; truncates least-important fields first.
+function buildFeedContext(items: AnyFeedItem[]): string {
+  const MAX_CHARS = 7500
+  const lines: string[] = []
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    const n = i + 1
+
+    if (isEvent(item)) {
+      const parts: string[] = [`${n}.`]
+      if (item.status) parts.push(`[${item.status.toUpperCase()}]`)
+      parts.push(item.title)
+      if (item.prizes) parts.push(`prizes: ${item.prizes}`)
+      if (item.deadline) parts.push(`deadline: ${item.deadline}`)
+      if (item.organizer) parts.push(`by ${item.organizer}`)
+      if (item.location) parts.push(item.location)
+      if (item.tags?.length) parts.push(`tags: ${item.tags.join(', ')}`)
+      if (item.summary) parts.push(item.summary.slice(0, 120))
+      lines.push(parts.join(' | '))
+    } else {
+      const parts: string[] = [`${n}.`, item.title]
+      if (item.source) parts.push(item.source)
+      if (item.publishedAt) parts.push(item.publishedAt)
+      if (item.summary) parts.push(item.summary.slice(0, 120))
+      lines.push(parts.join(' | '))
+    }
+  }
+
+  // Join and truncate to fit within the limit
+  let result = lines.join('\n')
+  if (result.length > MAX_CHARS) {
+    result = result.slice(0, MAX_CHARS) + '\n[truncated]'
+  }
+  return result
+}
+
+function buildDynamicVars(feed: Feed, items: AnyFeedItem[]): Record<string, string> {
+  return {
     feed_name: feed.name,
+    feed_type: feed.feedType,
     feed_keywords: feed.keywords.join(', '),
     item_count: String(items.length),
+    feed_items: buildFeedContext(items),
   }
-  for (let i = 0; i < MAX_AGENT_CONTEXT_ITEMS; i++) {
-    const item = top[i]
-    vars[`item_${i + 1}_title`] = item?.title ?? ''
-    vars[`item_${i + 1}_summary`] = item?.summary ? item.summary.slice(0, 150) : ''
-    vars[`item_${i + 1}_source`] = item?.source ?? ''
-  }
-  return vars
 }
 
 export function useVoiceAgent(activeFeed: Feed | null) {
@@ -90,7 +126,7 @@ export function useVoiceAgent(activeFeed: Feed | null) {
     useFeedStore.getState().clearTranscript()
 
     const items = useFeedStore.getState().itemsCache[activeFeed.id] ?? []
-    const dynamicVariables = buildDynamicVars(activeFeed, items)
+    const dynamicVariables = buildDynamicVars(activeFeed, items as AnyFeedItem[])
 
     await conversation.startSession({
       agentId: agentId as string,

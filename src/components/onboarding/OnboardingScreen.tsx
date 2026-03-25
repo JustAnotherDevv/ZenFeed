@@ -1,16 +1,15 @@
 import { useState, useRef, useCallback } from 'react'
-import { ArrowRight, Mic, MicOff, Sparkles, Wand2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { ArrowRight, Mic, MicOff, Wand2 } from 'lucide-react'
 import { useFeedStore } from '@/store/useFeedStore'
 import { useFeedSearch } from '@/hooks/useFeedSearch'
 import { parseFeedDescription } from '@/api/claude'
 import type { FeedType } from '@/types/feed'
 
 const PRESETS: { label: string; description: string; feedType: FeedType }[] = [
-  { label: 'VC & Fundraising', feedType: 'news', description: 'Latest Series A and venture capital funding rounds and startup news' },
-  { label: 'AI & Tech', feedType: 'news', description: 'Artificial intelligence, LLM and machine learning tech news' },
-  { label: 'Web3 Hackathons', feedType: 'events', description: 'Find active web3 blockchain hackathons with prizes, no job postings or past winners' },
-  { label: 'AI Competitions', feedType: 'events', description: 'Find active AI and machine learning hackathons and competitions with prize money' },
+  { label: 'VC & Fundraising', feedType: 'news',   description: 'Latest Series A and venture capital funding rounds and startup news' },
+  { label: 'AI & Tech',        feedType: 'news',   description: 'Artificial intelligence, LLM and machine learning tech news' },
+  { label: 'Web3 Hackathons',  feedType: 'events', description: 'Find active web3 blockchain hackathons with prizes, no job postings or past winners' },
+  { label: 'AI Competitions',  feedType: 'events', description: 'Find active AI and machine learning hackathons and competitions with prize money' },
 ]
 
 export function OnboardingScreen() {
@@ -32,19 +31,17 @@ export function OnboardingScreen() {
     PRESETS.forEach((preset) => {
       const freshness = preset.feedType === 'events' ? 'qdr:m' as const : 'qdr:d' as const
       const keywords = preset.description.split(' ').filter(w => w.length > 3).slice(0, 6)
-      const feed = {
+      store.addFeed({
         name: preset.label,
         keywords,
-        negativeKeywords: [] as string[],
+        negativeKeywords: [],
         freshness,
         feedType: preset.feedType,
         naturalDescription: preset.description,
-      }
-      const id = store.addFeed(feed)
-      fetchFeed({ ...feed, id, createdAt: Date.now() })
+      })
     })
     store.completeOnboarding()
-  }, [store, fetchFeed])
+  }, [store])
 
   const applyPreset = (preset: typeof PRESETS[0]) => {
     setDescription(preset.description)
@@ -106,49 +103,63 @@ export function OnboardingScreen() {
   const finish = () => store.completeOnboarding()
 
   return (
-    <div className="flex flex-col h-svh bg-background">
+    <div className="flex flex-col h-svh bg-background font-mono">
       {/* Step 0: Welcome */}
       {step === 0 && (
-        <div className="flex flex-col items-center justify-center flex-1 px-8 text-center">
-          <div className="relative mb-8">
-            <div className="w-24 h-24 rounded-3xl bg-primary flex items-center justify-center shadow-2xl">
-              <Sparkles className="w-10 h-10 text-primary-foreground" />
+        <div className="flex flex-col items-start justify-center flex-1 px-8">
+          <div className="mb-10">
+            <div className="text-5xl font-mono font-medium text-primary mb-1 tracking-tight">
+              [Z]
             </div>
-            <div className="absolute -inset-3 rounded-3xl bg-primary/20 animate-pulse -z-10" />
+            <div className="text-xs terminal-label mt-2">
+              zenfeed // ai-powered feed aggregator
+            </div>
           </div>
-          <h1 className="text-3xl font-bold text-foreground mb-3 tracking-tight">Welcome to ZenFeed</h1>
-          <p className="text-muted-foreground leading-relaxed mb-10">
-            Your personalized AI news companion. Create custom feeds on any topic and let your voice guide you through the latest.
+
+          <h1 className="text-2xl font-mono font-medium text-foreground mb-2 tracking-tight">
+            ZenFeed<span className="text-primary animate-blink">_</span>
+          </h1>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-10 max-w-sm">
+            Describe any topic in plain language. Get a live, structured feed from the open web — events, news, funding rounds, anything.
           </p>
-          <Button className="w-full h-14 text-base rounded-2xl" onClick={() => setStep(1)}>
-            Get Started <ArrowRight className="ml-2 w-5 h-5" />
-          </Button>
+
+          <button
+            className="w-full max-w-sm py-3 bg-primary text-primary-foreground font-mono text-xs uppercase tracking-widest hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 mb-4"
+            onClick={() => setStep(1)}
+          >
+            Get Started <ArrowRight className="w-4 h-4" />
+          </button>
           <button
             onClick={explorePublicFeeds}
-            className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="terminal-label text-muted-foreground hover:text-primary transition-colors"
           >
-            Skip — explore public feeds →
+            &gt; skip — explore public feeds
           </button>
+
+          <div className="mt-16 terminal-label opacity-40">
+            powered by firecrawl + elevenlabs
+          </div>
         </div>
       )}
 
       {/* Step 1: Create first feed */}
       {step === 1 && (
-        <div className="flex flex-col flex-1 px-6 pt-12 pb-8 overflow-y-auto">
-          <h1 className="text-2xl font-bold text-foreground mb-1">What do you want to track?</h1>
-          <p className="text-muted-foreground text-sm mb-6">Describe it in plain language or pick a quick start.</p>
+        <div className="flex flex-col flex-1 px-6 pt-10 pb-8 overflow-y-auto">
+          <p className="terminal-label text-primary mb-1">&gt; configure_feed</p>
+          <h1 className="text-xl font-mono font-medium text-foreground mb-1">What do you want to track?</h1>
+          <p className="terminal-label mb-8">Describe it in plain language or pick a quick start.</p>
 
           {/* Presets */}
-          <p className="text-xs font-medium text-muted-foreground mb-2">Quick start</p>
-          <div className="grid grid-cols-2 gap-2 mb-6">
+          <p className="terminal-label mb-2">quick start</p>
+          <div className="grid grid-cols-2 gap-2 mb-8">
             {PRESETS.map((p) => (
               <button
                 key={p.label}
                 onClick={() => applyPreset(p)}
-                className={`p-3 rounded-2xl border text-left transition-colors text-sm font-medium ${
+                className={`p-3 border text-left transition-colors font-mono text-xs ${
                   description === p.description
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border bg-card text-foreground hover:border-primary/40'
+                    ? 'border-primary text-primary bg-primary/5'
+                    : 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground'
                 }`}
               >
                 {p.label}
@@ -157,80 +168,87 @@ export function OnboardingScreen() {
           </div>
 
           {/* NL input */}
-          <p className="text-xs font-medium text-muted-foreground mb-2">Or describe what you want</p>
+          <p className="terminal-label mb-2">or describe what you want</p>
           <div className="relative mb-3">
             <textarea
-              className="w-full min-h-[88px] rounded-xl border border-border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none pr-10"
-              placeholder='e.g. "Active web3 hackathons with prize money, no job listings or past winners"'
+              className="w-full min-h-[88px] border border-border bg-card px-3 py-2.5 font-mono text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary resize-none pr-10"
+              placeholder='e.g. "Active web3 hackathons with prize money, no job listings"'
               value={description}
               onChange={(e) => { setDescription(e.target.value); setParsed(false) }}
             />
             <button
               onClick={toggleVoice}
-              className={`absolute top-2.5 right-2.5 p-1.5 rounded-lg transition-colors ${
-                isListening ? 'bg-destructive/10 text-destructive animate-pulse' : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
+              className={`absolute top-2.5 right-2.5 p-1.5 transition-colors ${
+                isListening ? 'text-destructive animate-pulse' : 'text-muted-foreground hover:text-primary'
               }`}
             >
               {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
             </button>
           </div>
 
-          <Button
-            variant="outline"
-            className="w-full gap-2 mb-4"
+          <button
+            className="w-full flex items-center justify-center gap-2 py-2.5 border border-border font-mono text-xs uppercase tracking-wider text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors mb-4 disabled:opacity-30"
             onClick={handleGenerate}
             disabled={!description.trim() || isParsing}
           >
-            <Wand2 className="w-4 h-4" />
-            {isParsing ? 'Generating…' : 'Generate Feed Config'}
-          </Button>
+            <Wand2 className="w-3.5 h-3.5" />
+            {isParsing ? 'Generating...' : 'Generate Feed Config'}
+          </button>
 
           {/* Parsed preview */}
           {parsed && (
-            <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 mb-4 space-y-1.5">
+            <div className="border border-primary/30 bg-primary/5 px-4 py-3 mb-4 space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-primary">{parsedName}</span>
-                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{parsedFeedType}</span>
+                <span className="font-mono text-sm font-medium text-primary">{parsedName}</span>
+                <span className="terminal-label border border-border px-2 py-0.5">{parsedFeedType}</span>
               </div>
-              <p className="text-xs text-muted-foreground">{parsedKeywords.join(', ')}</p>
+              <p className="terminal-label">{parsedKeywords.join(' · ')}</p>
               {parsedNegKeywords.length > 0 && (
-                <p className="text-xs text-destructive/70">exclude: {parsedNegKeywords.join(', ')}</p>
+                <p className="terminal-label text-destructive/70">exclude: {parsedNegKeywords.join(' · ')}</p>
               )}
             </div>
           )}
 
           <div className="mt-auto">
-            <Button
-              className="w-full h-14 text-base rounded-2xl"
+            <button
+              className="w-full py-3 bg-primary text-primary-foreground font-mono text-xs uppercase tracking-widest hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-30"
               onClick={createAndContinue}
               disabled={!parsed || !parsedName.trim() || parsedKeywords.length === 0}
             >
-              Create Feed <ArrowRight className="ml-2 w-5 h-5" />
-            </Button>
+              Create Feed <ArrowRight className="w-4 h-4" />
+            </button>
           </div>
         </div>
       )}
 
       {/* Step 2: Voice setup */}
       {step === 2 && (
-        <div className="flex flex-col items-center justify-center flex-1 px-8 text-center">
-          <div className="relative mb-8">
-            <div className="w-24 h-24 rounded-full bg-primary flex items-center justify-center shadow-2xl">
-              <Mic className="w-10 h-10 text-primary-foreground" />
-            </div>
-            <div className="absolute -inset-3 rounded-full bg-primary/20 animate-pulse-ring -z-10" />
+        <div className="flex flex-col items-start justify-center flex-1 px-8">
+          <p className="terminal-label text-primary mb-8">&gt; voice_setup</p>
+
+          <div className="w-16 h-16 rounded-full border border-primary/40 flex items-center justify-center mb-8 bg-primary/5 shadow-[0_0_20px_rgba(57,211,83,0.15)]">
+            <Mic className="w-7 h-7 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground mb-3">Enable voice</h1>
-          <p className="text-muted-foreground text-sm leading-relaxed mb-8">
-            ZenFeed works hands-free. Your AI voice companion can read your feed, answer questions, and update your topics — just ask.
+
+          <h1 className="text-xl font-mono font-medium text-foreground mb-3">Enable voice</h1>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-sm">
+            Hands-free AI companion. Ask it to summarize your feed, add topics, or open articles.
           </p>
-          <p className="text-xs text-muted-foreground bg-muted px-4 py-3 rounded-xl mb-8">
-            Try saying: <span className="font-medium text-foreground">"Summarize my feed"</span> or <span className="font-medium text-foreground">"Add climate tech to my topics"</span>
-          </p>
-          <Button className="w-full h-14 text-base rounded-2xl mb-3" onClick={finish}>
-            Enable Voice <Mic className="ml-2 w-5 h-5" />
-          </Button>
-          <button onClick={finish} className="text-sm text-muted-foreground">Skip for now</button>
+          <div className="border border-border px-4 py-3 mb-8 max-w-sm">
+            <p className="terminal-label mb-1">try saying</p>
+            <p className="font-mono text-xs text-foreground">"Summarize my feed"</p>
+            <p className="font-mono text-xs text-foreground mt-1">"Add climate tech to my topics"</p>
+          </div>
+
+          <button
+            className="w-full max-w-sm py-3 bg-primary text-primary-foreground font-mono text-xs uppercase tracking-widest hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 mb-4"
+            onClick={finish}
+          >
+            Enable Voice <Mic className="w-4 h-4" />
+          </button>
+          <button onClick={finish} className="terminal-label text-muted-foreground hover:text-foreground transition-colors">
+            &gt; skip for now
+          </button>
         </div>
       )}
     </div>

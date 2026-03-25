@@ -10,9 +10,9 @@ interface EventCardProps {
 }
 
 const statusConfig = {
-  active: { label: 'Active', className: 'bg-green-500/15 text-green-600' },
-  upcoming: { label: 'Upcoming', className: 'bg-blue-500/15 text-blue-600' },
-  ended: { label: 'Ended', className: 'bg-muted text-muted-foreground' },
+  active:   { dot: '●', label: 'ACTIVE',   color: 'text-primary',          border: 'border-l-primary' },
+  upcoming: { dot: '●', label: 'UPCOMING', color: 'text-[#58a6ff]',        border: 'border-l-[#58a6ff]' },
+  ended:    { dot: '○', label: 'ENDED',    color: 'text-muted-foreground', border: 'border-l-transparent' },
 }
 
 export function EventCard({ item, highlighted, index, compact = false }: EventCardProps) {
@@ -24,36 +24,37 @@ export function EventCard({ item, highlighted, index, compact = false }: EventCa
     return (
       <div
         className={cn(
-          'bg-card rounded-2xl border border-border overflow-hidden flex flex-col',
+          'bg-card border border-border border-l-2 overflow-hidden flex flex-col',
+          status.border,
           'animate-fade-in',
           highlighted && 'card-highlighted'
         )}
         style={{ animationDelay: `${index * 40}ms`, animationFillMode: 'both' }}
       >
-        <a href={item.url} target="_blank" rel="noopener noreferrer" className="flex-1 block p-3 active:bg-muted/50 transition-colors">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className={cn('text-[10px] font-semibold px-1.5 py-0.5 rounded-full', status.className)}>
-              {status.label}
+        <a href={item.url} target="_blank" rel="noopener noreferrer" className="flex-1 block p-3 hover:bg-muted/30 transition-colors">
+          <div className="flex items-center justify-between mb-2">
+            <span className={cn('terminal-label', status.color)}>
+              {status.dot} {status.label}
             </span>
             {item.prizes && (
-              <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
+              <span className="font-mono text-[10px] text-[#f0a500] font-medium">
                 {truncate(item.prizes, 16)}
               </span>
             )}
           </div>
-          <h3 className="font-bold text-foreground text-xs leading-snug mb-1">
+          <h3 className="font-mono font-medium text-foreground text-xs leading-snug mb-1.5">
             {truncate(item.title, 60)}
           </h3>
           {item.organizer && (
-            <p className="text-[10px] text-muted-foreground truncate">by {item.organizer}</p>
+            <p className="terminal-label">by {item.organizer}</p>
           )}
           {item.deadline && (
-            <p className="text-[10px] text-primary mt-1.5 font-medium">
+            <p className={cn('font-mono text-[10px] mt-1.5', status.color)}>
               {formatDeadline(item.deadline)}{days !== null && days >= 0 ? ` · ${days}d` : ''}
             </p>
           )}
           {item.location && (
-            <p className="text-[10px] text-muted-foreground mt-0.5 truncate">📍 {item.location}</p>
+            <p className="terminal-label mt-0.5 truncate">{item.location}</p>
           )}
         </a>
         <div className="px-3 pb-3">
@@ -61,10 +62,10 @@ export function EventCard({ item, highlighted, index, compact = false }: EventCa
             href={registerUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-1 w-full py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold active:opacity-80"
+            className="flex items-center justify-center gap-1 w-full py-1.5 bg-primary text-primary-foreground font-mono text-[10px] uppercase tracking-widest hover:bg-primary/90 transition-colors"
             onClick={(e) => e.stopPropagation()}
           >
-            Register <ExternalLink className="w-3 h-3" />
+            Register <ExternalLink className="w-2.5 h-2.5" />
           </a>
         </div>
       </div>
@@ -74,7 +75,8 @@ export function EventCard({ item, highlighted, index, compact = false }: EventCa
   return (
     <div
       className={cn(
-        'bg-card rounded-2xl border border-border overflow-hidden',
+        'bg-card border border-border border-l-2 overflow-hidden',
+        status.border,
         'animate-fade-in',
         highlighted && 'card-highlighted'
       )}
@@ -85,31 +87,31 @@ export function EventCard({ item, highlighted, index, compact = false }: EventCa
         href={item.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="block p-4 active:bg-muted/50 transition-colors"
+        className="block p-4 hover:bg-muted/30 transition-colors"
       >
         {/* Status + source row */}
-        <div className="flex items-center justify-between mb-2">
-          <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full', status.className)}>
-            {status.label}
+        <div className="flex items-center justify-between mb-3">
+          <span className={cn('terminal-label', status.color)}>
+            {status.dot} {status.label}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {item.location && (
-              <span className="text-xs text-muted-foreground">📍 {item.location}</span>
+              <span className="terminal-label">{item.location}</span>
             )}
-            <span className="text-xs text-muted-foreground">{item.source}</span>
+            <span className="terminal-label">{item.source}</span>
           </div>
         </div>
 
         {/* Title */}
-        <h3 className="font-bold text-foreground text-sm leading-snug mb-1">
+        <h3 className="font-mono font-medium text-foreground text-sm leading-snug mb-2">
           {truncate(item.title, 100)}
         </h3>
 
         {/* Organizer + team size */}
         {(item.organizer || item.teamSize) && (
-          <p className="text-xs text-muted-foreground mb-2">
+          <p className="terminal-label mb-2">
             {item.organizer && <span>by {item.organizer}</span>}
-            {item.organizer && item.teamSize && <span className="mx-1.5 opacity-40">·</span>}
+            {item.organizer && item.teamSize && <span className="mx-2 opacity-40">//</span>}
             {item.teamSize && <span>{item.teamSize}</span>}
           </p>
         )}
@@ -118,7 +120,7 @@ export function EventCard({ item, highlighted, index, compact = false }: EventCa
         {item.tags && item.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-2">
             {item.tags.slice(0, 4).map(tag => (
-              <span key={tag} className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-primary/10 text-primary">
+              <span key={tag} className="font-mono text-[10px] uppercase tracking-wide px-1.5 py-0.5 border border-primary/30 text-primary">
                 {tag}
               </span>
             ))}
@@ -129,7 +131,7 @@ export function EventCard({ item, highlighted, index, compact = false }: EventCa
         {item.techStack && item.techStack.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-2">
             {item.techStack.slice(0, 3).map(tech => (
-              <span key={tech} className="text-[10px] px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground">
+              <span key={tech} className="font-mono text-[10px] uppercase tracking-wide px-1.5 py-0.5 border border-border text-muted-foreground">
                 {tech}
               </span>
             ))}
@@ -138,31 +140,27 @@ export function EventCard({ item, highlighted, index, compact = false }: EventCa
 
         {/* Description */}
         {item.summary && (
-          <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+          <p className="text-xs text-muted-foreground leading-relaxed mb-3 font-mono">
             {truncate(item.summary, 140)}
           </p>
         )}
 
-        {/* Prize + Deadline badges */}
+        {/* Prize + Deadline */}
         {(item.prizes || item.deadline) && (
-          <div className="flex flex-wrap gap-2 mb-1">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mb-1 font-mono text-xs">
             {item.prizes && (
-              <div className="flex items-center gap-1 bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-lg px-2.5 py-1.5">
-                <span className="text-xs">Prize</span>
-                <span className="text-xs font-bold">{truncate(item.prizes, 30)}</span>
-              </div>
+              <span className="text-[#f0a500]">
+                <span className="terminal-label mr-1.5">prize</span>
+                {truncate(item.prizes, 30)}
+              </span>
             )}
             {item.deadline && (
-              <div className="flex items-center gap-1 bg-primary/10 text-primary rounded-lg px-2.5 py-1.5">
-                <span className="text-xs">Deadline</span>
-                <span className="text-xs font-bold">{formatDeadline(item.deadline)}</span>
-                {days !== null && days >= 0 && (
-                  <span className="text-xs opacity-75">· {days}d left</span>
-                )}
-                {days !== null && days < 0 && (
-                  <span className="text-xs opacity-75">· ended</span>
-                )}
-              </div>
+              <span className={status.color}>
+                <span className="terminal-label mr-1.5">deadline</span>
+                {formatDeadline(item.deadline)}
+                {days !== null && days >= 0 && <span className="text-muted-foreground ml-1.5">· {days}d left</span>}
+                {days !== null && days < 0 && <span className="text-muted-foreground ml-1.5">· ended</span>}
+              </span>
             )}
           </div>
         )}
@@ -174,11 +172,10 @@ export function EventCard({ item, highlighted, index, compact = false }: EventCa
           href={registerUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold active:opacity-80 transition-opacity"
+          className="flex items-center justify-center gap-2 w-full py-2.5 bg-primary text-primary-foreground font-mono text-xs uppercase tracking-widest hover:bg-primary/90 transition-colors"
           onClick={(e) => e.stopPropagation()}
         >
-          Register
-          <ExternalLink className="w-3.5 h-3.5" />
+          Register <ExternalLink className="w-3 h-3" />
         </a>
       </div>
     </div>

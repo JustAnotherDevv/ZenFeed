@@ -18,7 +18,6 @@ export function EventStatsBar({ items }: EventStatsBarProps) {
   const upcoming = items.filter(e => e.status === 'upcoming').length
   const totalPrize = items.reduce((sum, e) => sum + (e.prizeAmount ?? 0), 0)
 
-  // City breakdown from location field
   const locationCounts = new Map<string, number>()
   for (const e of items) {
     if (e.location && e.location.toLowerCase() !== 'online' && e.location.toLowerCase() !== 'hybrid') {
@@ -27,9 +26,8 @@ export function EventStatsBar({ items }: EventStatsBarProps) {
     }
   }
   const onlineCount = items.filter(e => e.location?.toLowerCase() === 'online' || e.location?.toLowerCase() === 'hybrid').length
-  const topCities = [...locationCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4)
+  const topCities = [...locationCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3)
 
-  // Next deadline
   const withDeadlines = items
     .filter(e => e.deadline && new Date(e.deadline).getTime() > Date.now())
     .sort((a, b) => new Date(a.deadline!).getTime() - new Date(b.deadline!).getTime())
@@ -37,38 +35,24 @@ export function EventStatsBar({ items }: EventStatsBarProps) {
     ? Math.ceil((new Date(withDeadlines[0].deadline).getTime() - Date.now()) / 86400000)
     : null
 
-  const stats: { label: string; value: string }[] = []
+  const parts: string[] = []
 
-  if (totalPrize > 0) stats.push({ label: 'Combined prizes', value: formatMoney(totalPrize) })
-  if (active > 0 || upcoming > 0) {
-    const parts = []
-    if (active > 0) parts.push(`${active} active`)
-    if (upcoming > 0) parts.push(`${upcoming} upcoming`)
-    stats.push({ label: 'Status', value: parts.join(' · ') })
-  }
-  if (nextDeadlineDays !== null) stats.push({ label: 'Next deadline', value: `${nextDeadlineDays}d` })
-  if (topCities.length > 0) {
-    stats.push({
-      label: `${topCities.length} cit${topCities.length === 1 ? 'y' : 'ies'}`,
-      value: topCities.map(([city, n]) => `${city}${n > 1 ? ` (${n})` : ''}`).join(', '),
-    })
-  }
-  if (onlineCount > 0 && topCities.length > 0) {
-    stats.push({ label: 'Online', value: `${onlineCount} event${onlineCount > 1 ? 's' : ''}` })
-  }
+  if (totalPrize > 0) parts.push(formatMoney(totalPrize) + ' prizes')
+  if (active > 0) parts.push(`${active} active`)
+  if (upcoming > 0) parts.push(`${upcoming} upcoming`)
+  if (nextDeadlineDays !== null) parts.push(`next deadline ${nextDeadlineDays}d`)
+  if (topCities.length > 0) parts.push(topCities.map(([c]) => c).join(', '))
+  if (onlineCount > 0) parts.push(`${onlineCount} online`)
 
-  if (stats.length === 0) return null
+  if (parts.length === 0) return null
 
   return (
-    <div className="flex flex-wrap gap-2">
-      {stats.map(stat => (
-        <div
-          key={stat.label}
-          className="bg-primary/8 rounded-xl px-3 py-2"
-        >
-          <p className="text-[10px] text-muted-foreground leading-none mb-0.5">{stat.label}</p>
-          <p className="text-xs font-semibold text-foreground">{stat.value}</p>
-        </div>
+    <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground flex flex-wrap gap-x-0 gap-y-0.5 leading-5">
+      {parts.map((part, i) => (
+        <span key={i}>
+          {i > 0 && <span className="mx-2 opacity-40">//</span>}
+          <span>{part}</span>
+        </span>
       ))}
     </div>
   )

@@ -44,6 +44,10 @@ export function useFeedSearch() {
 
     if (!force && !stale && hasCache) return
 
+    // Re-entry guard — don't start a second fetch if one is already running
+    const currentState = store.loadingState[feed.id]
+    if (!force && (currentState === 'loading' || currentState === 'streaming')) return
+
     // Keep cached cards visible while refreshing — don't clear yet
     store.setLoadingState(feed.id, hasCache ? 'streaming' : 'loading')
 
