@@ -7,6 +7,30 @@ import { parsePrizeAmount } from '@/lib/utils'
 
 const BASE = 'https://api.firecrawl.dev/v1'
 
+// Global concurrency limiter for Firecrawl API — prevents >2 simultaneous scrape requests
+// which is the main cause of 429 responses.
+let _activeRequests = 0
+const _waitQueue: (() => void)[] = []
+const MAX_CONCURRENT = 2
+
+async function acquireSlot(): Promise<void> {
+  if (_activeRequests < MAX_CONCURRENT) {
+    _activeRequests++
+    return
+  }
+  return new Promise(resolve => {
+    _waitQueue.push(() => { _activeRequests++; resolve() })
+  })
+}
+
+function releaseSlot() {
+  _activeRequests--
+  if (_waitQueue.length > 0) {
+    const next = _waitQueue.shift()!
+    next()
+  }
+}
+
 interface FirecrawlSearchResult {
   title?: string
   description?: string
@@ -190,6 +214,7 @@ export async function searchFeed(
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 async function scrapeMarkdown(url: string, apiKey: string, attempt = 0): Promise<string | null> {
+  await acquireSlot()
   try {
     const res = await fetch(`${BASE}/scrape`, {
       method: 'POST',
@@ -198,17 +223,20 @@ async function scrapeMarkdown(url: string, apiKey: string, attempt = 0): Promise
     })
 
     if (res.status === 429) {
-      if (attempt >= 3) return null
+      releaseSlot()
+      if (attempt >= 4) return null
       const retryAfter = parseInt(res.headers.get('retry-after') ?? '0', 10)
-      const delay = retryAfter > 0 ? retryAfter * 1000 : (attempt + 1) * 2000
+      const delay = retryAfter > 0 ? retryAfter * 1000 : Math.min((attempt + 1) * 3000, 15000)
       await sleep(delay)
       return scrapeMarkdown(url, apiKey, attempt + 1)
     }
 
-    if (!res.ok) return null
+    if (!res.ok) { releaseSlot(); return null }
     const json = await res.json()
+    releaseSlot()
     return json.data?.markdown ?? null
   } catch {
+    releaseSlot()
     return null
   }
 }
@@ -520,11 +548,11 @@ export async function searchEvents(
     return true
   }
 
-  // Phase 2: scrape + analyze in batches of 5
+  // Phase 2: scrape + analyze in batches of 3 (concurrency capped by acquireSlot)
   const subLinkJobs: (() => Promise<void>)[] = []
 
-  for (let i = 0; i < topUrls.length; i += 5) {
-    const batchUrls = topUrls.slice(i, i + 5)
+  for (let i = 0; i < topUrls.length; i += 3) {
+    const batchUrls = topUrls.slice(i, i + 3)
     const batchResults = await Promise.all(
       batchUrls.map(url => processUrl(url, apiKey, processOpts, metaMap.get(url)))
     )
@@ -539,7 +567,7 @@ export async function searchEvents(
         subLinkJobs.push(async () => {
           const subResults = await batchAll(
             links.map(subUrl => () => processUrl(subUrl, apiKey, { ...processOpts, phase: 'sublink' })),
-            5
+            3
           )
           const subBatchEvents: EventItem[] = []
           for (const sr of subResults) {

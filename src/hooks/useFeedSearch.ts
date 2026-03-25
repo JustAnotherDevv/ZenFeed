@@ -40,12 +40,12 @@ export function useFeedSearch() {
     const lastFetched = store.lastFetchedAt[feed.id] ?? 0
     const interval = REFRESH_INTERVAL_MS[feed.feedType] ?? REFRESH_INTERVAL_MS.news
     const stale = Date.now() - lastFetched > interval
+    const hasCache = (store.itemsCache[feed.id]?.length ?? 0) > 0
 
-    if (!force && !stale && (store.itemsCache[feed.id]?.length ?? 0) > 0) return
+    if (!force && !stale && hasCache) return
 
-    // Clear existing items and start loading
-    store.setItems(feed.id, [])
-    store.setLoadingState(feed.id, 'loading')
+    // Keep cached cards visible while refreshing — don't clear yet
+    store.setLoadingState(feed.id, hasCache ? 'streaming' : 'loading')
 
     let firstProgress = true
 
@@ -53,6 +53,7 @@ export function useFeedSearch() {
       const s = useFeedStore.getState()
       if (firstProgress) {
         firstProgress = false
+        s.setItems(feed.id, [])         // clear old cache only when fresh data arrives
         s.setLoadingState(feed.id, 'streaming')
       }
       s.appendItems(feed.id, items)
@@ -63,7 +64,6 @@ export function useFeedSearch() {
       const finalItems = useFeedStore.getState().itemsCache[feed.id] ?? []
       useFeedStore.getState().setLoadingState(feed.id, 'idle')
       useFeedStore.getState().setLastFetchedAt(feed.id, Date.now())
-      // Persist to Supabase in background
       dbSaveItems(feed.id, finalItems).catch(console.error)
     } catch (err) {
       console.error('Feed fetch error:', err)

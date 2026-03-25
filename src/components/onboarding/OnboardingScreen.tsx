@@ -28,6 +28,24 @@ export function OnboardingScreen() {
   const store = useFeedStore()
   const { fetchFeed } = useFeedSearch()
 
+  const explorePublicFeeds = useCallback(() => {
+    PRESETS.forEach((preset) => {
+      const freshness = preset.feedType === 'events' ? 'qdr:m' as const : 'qdr:d' as const
+      const keywords = preset.description.split(' ').filter(w => w.length > 3).slice(0, 6)
+      const feed = {
+        name: preset.label,
+        keywords,
+        negativeKeywords: [] as string[],
+        freshness,
+        feedType: preset.feedType,
+        naturalDescription: preset.description,
+      }
+      const id = store.addFeed(feed)
+      fetchFeed({ ...feed, id, createdAt: Date.now() })
+    })
+    store.completeOnboarding()
+  }, [store, fetchFeed])
+
   const applyPreset = (preset: typeof PRESETS[0]) => {
     setDescription(preset.description)
     setParsedFeedType(preset.feedType)
@@ -105,7 +123,12 @@ export function OnboardingScreen() {
           <Button className="w-full h-14 text-base rounded-2xl" onClick={() => setStep(1)}>
             Get Started <ArrowRight className="ml-2 w-5 h-5" />
           </Button>
-          <p className="text-xs text-muted-foreground mt-4">Powered by Firecrawl + ElevenLabs</p>
+          <button
+            onClick={explorePublicFeeds}
+            className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Skip — explore public feeds →
+          </button>
         </div>
       )}
 

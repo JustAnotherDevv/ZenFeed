@@ -126,15 +126,22 @@ export const useFeedStore = create<FeedStore>()(
       partialize: (state) => ({
         feeds: state.feeds,
         hasCompletedOnboarding: state.hasCompletedOnboarding,
+        itemsCache: state.itemsCache,
+        lastFetchedAt: state.lastFetchedAt,
       }),
       merge: (persisted, current) => {
         const p = persisted as Partial<FeedStore>
-        // Migrate old feeds that lack negativeKeywords
         const feeds = (p.feeds ?? []).map(f => ({
           ...f,
           negativeKeywords: f.negativeKeywords ?? [],
         }))
-        return { ...current, ...p, feeds }
+        return {
+          ...current,
+          ...p,
+          feeds,
+          itemsCache: p.itemsCache ?? {},
+          lastFetchedAt: p.lastFetchedAt ?? {},
+        }
       },
     }
   )

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useFeedStore } from '@/store/useFeedStore'
 import { dbLoadFeeds, dbLoadItems } from '@/lib/supabase'
 import { OnboardingScreen } from '@/components/onboarding/OnboardingScreen'
@@ -7,8 +7,12 @@ import { Toaster } from '@/components/ui/sonner'
 
 export default function App() {
   const hasCompletedOnboarding = useFeedStore((s) => s.hasCompletedOnboarding)
+  const loadedRef = useRef(false)
 
   useEffect(() => {
+    if (loadedRef.current) return
+    loadedRef.current = true
+
     const loadFromSupabase = async () => {
       const feeds = await dbLoadFeeds()
       if (feeds.length === 0) return
