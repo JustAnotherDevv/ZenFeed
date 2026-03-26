@@ -61,6 +61,17 @@ export function daysUntil(dateStr?: string): number | null {
   }
 }
 
+export function normalizeUrl(url: string): string {
+  try {
+    const u = new URL(url)
+    u.search = ''
+    u.hash = ''
+    return u.origin + u.pathname.replace(/\/$/, '')
+  } catch {
+    return url.split('?')[0].split('#')[0].replace(/\/$/, '')
+  }
+}
+
 export function formatDeadline(dateStr?: string): string {
   if (!dateStr) return ''
   try {

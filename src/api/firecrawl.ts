@@ -1,9 +1,8 @@
 import type { FeedItem, EventItem } from '@/types/feed'
-import { generateId } from '@/lib/utils'
+import { generateId, normalizeUrl, parsePrizeAmount } from '@/lib/utils'
 import { SEARCH_LIMIT } from '@/lib/constants'
 import { callOpenRouter } from './openrouter'
 import { useDebugStore } from '@/store/useDebugStore'
-import { parsePrizeAmount } from '@/lib/utils'
 
 const BASE = 'https://api.firecrawl.dev/v1'
 
@@ -194,8 +193,8 @@ export async function searchFeed(
         if (!json.success || !json.data) return
 
         const results = json.data.map(normalizeResult).filter(item => item.title && item.url)
-        const newResults = results.filter(r => r.url && !seenUrls.has(r.url))
-        for (const r of newResults) seenUrls.add(r.url)
+        const newResults = results.filter(r => r.url && !seenUrls.has(normalizeUrl(r.url)))
+        for (const r of newResults) seenUrls.add(normalizeUrl(r.url))
 
         const filtered = postFilter(newResults, opts.negativeKeywords ?? [])
         if (filtered.length > 0) {
@@ -541,10 +540,11 @@ export async function searchEvents(
   const allEvents: EventItem[] = []
 
   function addIfNew(event: EventItem): boolean {
-    if (seenUrl.has(event.url)) return false
+    const normUrl = normalizeUrl(event.url)
+    if (seenUrl.has(normUrl)) return false
     const key = `${normalize(event.title)}|${event.deadline ?? ''}`
     if (seenIdentity.has(key)) return false
-    seenUrl.add(event.url)
+    seenUrl.add(normUrl)
     seenIdentity.add(key)
     allEvents.push(event)
     return true

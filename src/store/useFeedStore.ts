@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Feed, AnyFeedItem, TranscriptMessage, AgentStatus, LoadingState } from '@/types/feed'
-import { generateId } from '@/lib/utils'
+import { generateId, normalizeUrl } from '@/lib/utils'
 import { dbUpsertFeed, dbDeleteFeed } from '@/lib/supabase'
 
 interface FeedStore {
@@ -89,8 +89,8 @@ export const useFeedStore = create<FeedStore>()(
       appendItems: (feedId, items) =>
         set((s) => {
           const existing = s.itemsCache[feedId] ?? []
-          const existingUrls = new Set(existing.map((i) => i.url))
-          const newItems = items.filter((i) => !existingUrls.has(i.url))
+          const existingUrls = new Set(existing.map((i) => normalizeUrl(i.url)))
+          const newItems = items.filter((i) => !existingUrls.has(normalizeUrl(i.url)))
           return { itemsCache: { ...s.itemsCache, [feedId]: [...existing, ...newItems] } }
         }),
 

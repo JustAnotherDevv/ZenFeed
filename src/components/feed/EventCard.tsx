@@ -18,20 +18,30 @@ const statusConfig = {
 export function EventCard({ item, highlighted, index, compact = false }: EventCardProps) {
   const days = daysUntil(item.deadline)
   const status = statusConfig[item.status] ?? statusConfig.active
-  const registerUrl = item.registrationUrl ?? item.url
+
+  const isValidUrl = (url?: string) => {
+    if (!url) return false
+    try {
+      const u = new URL(url)
+      return u.protocol.startsWith('http') && !u.hostname.match(/^(localhost|127\.|0\.0\.0\.0|::1)/)
+    } catch { return false }
+  }
+  const registerUrl = isValidUrl(item.registrationUrl) ? item.registrationUrl!
+    : isValidUrl(item.url) ? item.url
+    : null
 
   if (compact) {
     return (
       <div
         className={cn(
-          'bg-card border border-border border-l-2 overflow-hidden flex flex-col',
+          'w-full bg-card border border-border border-l-2 overflow-hidden flex flex-col',
           status.border,
           'animate-fade-in',
           highlighted && 'card-highlighted'
         )}
         style={{ animationDelay: `${index * 40}ms`, animationFillMode: 'both' }}
       >
-        <a href={item.url} target="_blank" rel="noopener noreferrer" className="flex-1 block p-3 hover:bg-muted/30 transition-colors">
+        <a href={isValidUrl(item.url) ? item.url : undefined} target="_blank" rel="noopener noreferrer" className="flex-1 block p-3 hover:bg-muted/30 transition-colors">
           <div className="flex items-center justify-between mb-2">
             <span className={cn('terminal-label', status.color)}>
               {status.dot} {status.label}
@@ -57,16 +67,22 @@ export function EventCard({ item, highlighted, index, compact = false }: EventCa
             <p className="terminal-label mt-0.5 truncate">{item.location}</p>
           )}
         </a>
-        <div className="px-3 pb-3">
-          <a
-            href={registerUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-1 w-full py-1.5 bg-primary text-primary-foreground font-mono text-[10px] uppercase tracking-widest hover:bg-primary/90 transition-colors"
-            onClick={(e) => e.stopPropagation()}
-          >
-            Register <ExternalLink className="w-2.5 h-2.5" />
-          </a>
+        <div className="px-3 pb-3 mt-auto">
+          {registerUrl ? (
+            <a
+              href={registerUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1 w-full py-1.5 bg-primary text-primary-foreground font-mono text-[10px] uppercase tracking-widest hover:bg-primary/90 transition-colors"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Register <ExternalLink className="w-2.5 h-2.5" />
+            </a>
+          ) : (
+            <span className="flex items-center justify-center w-full py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground border border-border opacity-40">
+              No Link
+            </span>
+          )}
         </div>
       </div>
     )
@@ -84,7 +100,7 @@ export function EventCard({ item, highlighted, index, compact = false }: EventCa
     >
       {/* Clickable body */}
       <a
-        href={item.url}
+        href={isValidUrl(item.url) ? item.url : undefined}
         target="_blank"
         rel="noopener noreferrer"
         className="block p-4 hover:bg-muted/30 transition-colors"
@@ -168,15 +184,21 @@ export function EventCard({ item, highlighted, index, compact = false }: EventCa
 
       {/* Register CTA */}
       <div className="px-4 pb-4">
-        <a
-          href={registerUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 w-full py-2.5 bg-primary text-primary-foreground font-mono text-xs uppercase tracking-widest hover:bg-primary/90 transition-colors"
-          onClick={(e) => e.stopPropagation()}
-        >
-          Register <ExternalLink className="w-3 h-3" />
-        </a>
+        {registerUrl ? (
+          <a
+            href={registerUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full py-2.5 bg-primary text-primary-foreground font-mono text-xs uppercase tracking-widest hover:bg-primary/90 transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Register <ExternalLink className="w-3 h-3" />
+          </a>
+        ) : (
+          <span className="flex items-center justify-center w-full py-2.5 font-mono text-xs uppercase tracking-widest text-muted-foreground border border-border opacity-40">
+            No Link
+          </span>
+        )}
       </div>
     </div>
   )

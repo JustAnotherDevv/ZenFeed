@@ -140,9 +140,9 @@ export function FeedView({ feed, isActive = true }: FeedViewProps) {
 
             {/* Cards */}
             {view === 'grid' && isEvents ? (
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 items-stretch">
                 {sortedEvents.map((item, i) => (
-                  <div key={item.id} ref={(el) => { cardRefs.current[i] = el }}>
+                  <div key={item.id} ref={(el) => { cardRefs.current[i] = el }} className="flex">
                     <EventCard item={item} index={i} highlighted={highlightedItem === i} compact />
                   </div>
                 ))}
